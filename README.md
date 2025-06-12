@@ -1,19 +1,51 @@
-# Coq Template:
+<!---
+This file was generated from `meta.yml`, please do not edit manually.
+Follow the instructions on https://github.com/coq-community/templates to regenerate.
+--->
+# CVM
 
-This is the `ku-sldg` template for creating new Coq projects and plugins.
-In particular, we can use this for ocaml style plugins (via `ocaml_plugin` and `dune` options) or just plain Coq libraries.
+[![Docker CI][docker-action-shield]][docker-action-link]
 
-## Pre-Reqs
+[docker-action-shield]: https://github.com/ku-sldg/cvm/actions/workflows/docker-action.yml/badge.svg?branch=main
+[docker-action-link]: https://github.com/ku-sldg/cvm/actions/workflows/docker-action.yml
 
-- Install [mustache](https://mustache.github.io/) (in particular linux can use `ruby-mustache` package)
 
-## To create a new Coq project:
 
-1. Create a new repository (in GitHub) based off this repo
-1. Edit the `meta.yml` file. It should be relatively well documented, but reach out to [Will](https://github.com/Durbatuluk1701) if you have questions
-1. Run `make meta`
 
-## Notes:
+The Copland Virtual Machine (CVM) is a Rocq library that formalizes a virtual machine for the Copland Domain Specific Language for layered remote attestation.
 
-- Anytime your goals for the project change, make sure you modify the `meta.yml` file and re-run `make meta`
-- Anytime this generates infrastructure that is not useful, or needs to be modified, please open an issue in this repo and ping @Durbatuluk1701
+## Meta
+
+- Author(s):
+  - Will Thomas
+- License: [Creative Commons Attribution Share Alike 4.0 International](LICENSE)
+- Compatible Coq versions: 9.0 later
+- Compatible OCaml versions: 4.12 or later
+- Additional dependencies:
+  - [RocqCandy](https://github.com/ku-sldg/rocq-candy)
+  - [Copland Spec](https://github.com/ku-sldg/copland-spec)
+  - [Dune](https://dune.build) 3.17 or later
+- Related publication(s): none
+
+## Building and installation instructions
+
+The easiest way to install the latest released version of CVM
+is via [OPAM](https://opam.ocaml.org/doc/Install.html):
+
+```shell
+opam repo add -a --set-default ku-sldg/opam-repo https://github.com/ku-sldg/opam-repo.git
+opam repo add coq-released https://coq.inria.fr/opam/released
+opam install rocq-cvm
+```
+
+To instead build and install manually, do:
+
+``` shell
+git clone https://github.com/ku-sldg/cvm.git
+cd cvm
+dune build
+dune install
+```
+
+
+

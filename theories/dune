@@ -1,0 +1,12 @@
+; This file was generated from `meta.yml`, please do not edit manually.
+; Follow the instructions on https://github.com/coq-community/templates to regenerate.
+
+(include_subdirs qualified)
+
+(coq.theory
+ (name CVM)
+ (package rocq-cvm)
+ (theories RocqCandy CoplandSpec)
+ 
+ (synopsis "The Copland Virtual Machine (CVM)"))
+

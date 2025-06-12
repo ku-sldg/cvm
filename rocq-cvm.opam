@@ -1,0 +1,31 @@
+# This file was generated from `meta.yml`, please do not edit manually.
+# Follow the instructions on https://github.com/coq-community/templates to regenerate.
+
+opam-version: "2.0"
+maintainer: "30wthomas@ku.edu"
+version: "0.1.0"
+
+homepage: "https://github.com/ku-sldg/cvm"
+dev-repo: "git+https://github.com/ku-sldg/cvm.git"
+bug-reports: "https://github.com/ku-sldg/cvm/issues"
+license: "CC-BY-SA-4.0"
+
+synopsis: "The Copland Virtual Machine (CVM)"
+description: """
+The Copland Virtual Machine (CVM) is a Rocq library that formalizes a virtual machine for the Copland Domain Specific Language for layered remote attestation."""
+
+build: ["dune" "build" "-p" name "-j" jobs]
+depends: [
+  "ocaml" { >= "4.12~" }
+  "dune" {>= "3.17"}
+  "coq" 
+  "rocq-candy" { >= "0.2.1" }
+  "coq-copland-spec" { >= "0.1.1" }
+]
+
+tags: [
+  "logpath:cvm"
+]
+authors: [
+  "Will Thomas <30wthomas@ku.edu>"
+]
