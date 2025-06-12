@@ -33,7 +33,7 @@ dependencies:
       name: "coq-copland-spec"
       version: '{ >= "0.1.1" }'
       lib_name: "CoplandSpec"
-coq_trans_deps_workaround: false # Default false if we dont need libraries with transitive dependencies, but if we do, then we need to set this to true
+coq_trans_deps_workaround: true # Default false if we dont need libraries with transitive dependencies, but if we do, then we need to set this to true
 # This is due to https://github.com/ocaml/dune/issues/11483
 
 ci_extra_repos:

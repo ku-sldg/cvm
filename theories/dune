@@ -6,7 +6,7 @@
 (coq.theory
  (name CVM)
  (package rocq-cvm)
- (theories RocqCandy CoplandSpec)
+ 
  
  (synopsis "The Copland Virtual Machine (CVM)"))
 
