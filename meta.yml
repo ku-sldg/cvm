@@ -1,0 +1,104 @@
+---
+# This file is used to configure the project metadata
+fullname: <Project Name> # This is a full name for the project
+shortname: <Project Short Name> # NOTE: This is the presumed REPOSITORY name
+lib_name: <Project Library Name> # NOTE: This is the name of the library that will be used in the Coq code
+opam_name: <opam-name> # i.e. coq-Base64
+synopsis: "<Project Synopsis>"
+description: "<Project Description>"
+authors:
+  - name: "<Author Name>"
+    email: "<Author Email>"
+opam-file-maintainer: "30wthomas@ku.edu" # Need a strong default here or we will accidentally email a Coq developer
+opam-file-version: "0.1.0"
+
+######################################################
+# NOTE: Optional Extra Info
+######################################################
+# categories:
+#   - name: "<Category>"
+
+# keywords:
+#   - name: "<Keyword1>"
+#   - name: "<Keyword2>"
+
+dependencies:
+  - description: "[ExtLib](https://github.com/coq-community/coq-ext-lib)"
+    opam:
+      name: "coq-ext-lib"
+      version: '{ >= "0.13.0" }'
+      lib_name: "ExtLib"
+  - description: "[RocqCandy](https://github.com/ku-sldg/rocq-candy)"
+    opam:
+      name: "rocq-candy"
+      version: '{ >= "0.2.1" }'
+      lib_name: "RocqCandy"
+coq_trans_deps_workaround: false # Default false if we dont need libraries with transitive dependencies, but if we do, then we need to set this to true
+# This is due to https://github.com/ocaml/dune/issues/11483
+
+ci_extra_repos:
+  - description: "KU-SLDG Packages"
+    name: "ku-sldg/opam-repo"
+    url: "https://github.com/ku-sldg/opam-repo.git"
+
+# dependencies:
+#   - description: '[Parsec](https://github.com/liyishuai/coq-parsec)'
+#     opam:
+#       name: coq-parsec
+#       version: '{ >= "0.2.0" }'
+#   - description: '[Menhir](http://gallium.inria.fr/~fpottier/menhir/)'
+#     opam:
+#       name: menhir
+#       version: '{ >= "20220210" }'
+#   - description: "[MenhirLib]\
+#                   (https://gitlab.inria.fr/fpottier/menhir/-/tree/master/coq-menhirlib/)"
+#     opam:
+#       name: coq-menhirlib
+#       version: '{ >= "20220210" }'
+
+######################################################
+# NOTE: Stuff below this line you should not need to change
+# other than on occassion the `config options`
+######################################################
+# NOTE: check out https://github.com/coq-community/templates/blob/master/ref.yml for more possible values
+
+branch: main
+organization: ku-sldg
+
+# Config Options
+community: false # By default projects are not part of coq-community
+coqdoc: false # By default we want coqdoc
+submodule: false # By default we don't want submodules
+dune: true # By default we want dune builds
+ocaml_plugin: false # By default we don't assume plugins to use ocaml code
+# date: # by default we arent setting a date
+
+# CI services - we only want GH Actions by default
+# NOTE: You should not need to change these usually!
+travis: false
+action: true
+circleci: false
+nix: false
+ci_test_dependants: false
+ci_extra_dev: false
+ci_cron_schedule: 0 0 * * 0 # Weekly at midnight sunday
+tested_coq_opam_versions:
+  - version: "8.20"
+  # - version: "9.0"
+  #   repo: "rocq/rocq-prover"
+
+## UNKNOWN: action_appendix:
+
+# Extra Metadata
+# doi:
+# chat: # if we ever have a chat room?
+license:
+  - fullname: Creative Commons Attribution Share Alike 4.0 International
+    identifier: CC-BY-SA-4.0
+    file: LICENSE
+supported_coq_versions:
+  - text: "8.20 later"
+    opam: '{ >= "8.20~" }'
+supported_ocaml_versions:
+  - text: "4.12 or later"
+    opam: '{ >= "4.12~" }'
