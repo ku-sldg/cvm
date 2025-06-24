@@ -8,8 +8,7 @@ Author:  Adam Petz, ampetz@ku.edu
 From RocqCandy Require Import All.
 From CoplandSpec Require Import Term_Defs.
 
-Require Import Attestation_Session.
-Require Import Manifest_Admits.
+From CVM Require Import Attestation_Session.
 
 (** CVM monad state structure.
 
@@ -47,19 +46,4 @@ Definition CVM_Error_to_string (e : CVM_Error) : string :=
     end
   end.
 
-(** CVM monad -- instantiation of the general ResultT monad with cvm_st *)
-Definition CVM A := Err cvm_st Session_Config A CVM_Error.
-
-(* Look for cvm_st hyps and destruct them *)
-Ltac vmsts :=
-  simpl in *;
-  repeat
-    match goal with
-    | [H: cvm_st |- _] => destruct H
-    end.
-
-(* Same as vmsts, but without preceding simplification (simpl). *)
-Ltac amsts :=
-  repeat match goal with
-         | H:cvm_st |- _ => destruct H
-         end.
+Definition CVM A : Type := State (cvm_st * Session_Config) A CVM_Error.

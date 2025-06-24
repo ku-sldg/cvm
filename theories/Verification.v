@@ -16,13 +16,14 @@
 *)
 From RocqCandy Require Import All.
 From CoplandSpec Require Import Term_Defs Event_System.
-From CVM Require Import Cvm_Impl Cvm_St Attestation_Session Cvm_Monad Cvm_Axioms.
+From CVM Require Import Impl St Attestation_Session Monad Cvm_Axioms.
 
 Lemma invoke_ASP_config_immut : forall par e st sc res st' sc',
-  invoke_ASP e par st sc = (res, st', sc') ->
+  invoke_ASP e par (st, sc) = (res, (st', sc')) ->
   sc = sc'.
 Proof.
-  cvm_monad_unfold; ff.
+  ff (fun () => ltac1:(autounfold with cvm in *)).
+  u ().
 Qed.
 
 Lemma peel_n_rawev_result_spec : forall n ls ls1 ls2,
@@ -38,8 +39,6 @@ Lemma peel_n_none_spec : forall n ls e,
 Proof.
   induction n; ffa using cvm_monad_unfold; ffl.
 Qed.
-
-Require Import String ErrorStringConstants.
 
 (*
 Lemma invoke_APPR_config_immut : forall et r st sc res st' sc' out_et,

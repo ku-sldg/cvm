@@ -1,9 +1,8 @@
 From RocqCandy Require Import All.
 From CoplandSpec Require Import Term_Defs_Core.
-From CVM Require Import System_Types.
-(* Require Import JSON Interface_Strings_Vars. *)
+From CVM Require Export System_Types.
 
-Record Attestation_Session := {
+Record Attestation_Session := mkAtt_Sess {
   Session_Plc     : Plc ;
   Plc_Mapping     : Map Plc IP_Port;
   PubKey_Mapping  : Map Plc Public_Key;
@@ -31,8 +30,13 @@ Record Session_Config := {
   policy              : PolicyT ;
 }.
 
+Definition STR_Session_Plc : string := "Session_Plc".
+Definition STR_Plc_Mapping : string := "Plc_Mapping".
+Definition STR_PubKey_Mapping : string := "PubKey_Mapping".
+Definition STR_Session_Context : string := "Session_Context".
+
 Open Scope string_scope.
-Global Instance Jsonifiable_Attestation_Session `{Jsonifiable (Map Plc IP_Port), Jsonifiable (Map Plc PublicKey), Jsonifiable GlobalContext}: Jsonifiable Attestation_Session.
+Global Instance Jsonifiable_Attestation_Session `{Jsonifiable (Map Plc IP_Port), Jsonifiable (Map Plc Public_Key), Jsonifiable GlobalContext}: Jsonifiable Attestation_Session.
 eapply Build_Jsonifiable with 
   (to_JSON := (fun v => 
                 JSON_Object [
@@ -49,5 +53,13 @@ eapply Build_Jsonifiable with
     plc_map' <- from_JSON plc_map ;;
     pub_map' <- from_JSON pub_map ;;
     sc <- from_JSON sc ;;
-    resultC {| Session_Plc := plc'; Plc_Mapping := plc_map'; PubKey_Mapping := pub_map'; ats_context := sc |})); solve_json.
+    res {| Session_Plc := plc'; Plc_Mapping := plc_map'; PubKey_Mapping := pub_map'; ats_context := sc |})); solve_json.
 Defined.
+
+Definition session_config_decompiler (sc : Session_Config) : Attestation_Session :=
+{|
+  Session_Plc := (session_plc sc) ;
+  Plc_Mapping := (plc_map sc) ;
+  PubKey_Mapping := (pubkey_map sc) ;
+  ats_context := (session_context sc)
+|}.

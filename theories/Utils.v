@@ -1,6 +1,5 @@
 From RocqCandy Require Import All.
 From CoplandSpec Require Import Term_Defs.
-Require Import ErrorStringConstants.
 
 Fixpoint peel_n_rawev (n : nat) (ls : RawEv) : Result (RawEv * RawEv) string :=
   match n with
