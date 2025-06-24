@@ -20,7 +20,7 @@ depends: [
   "dune" {>= "3.17"}
   "coq" 
   "rocq-candy" { >= "0.2.1" }
-  "coq-copland-spec" { >= "0.1.1" }
+  "rocq-copland-spec" { >= "0.1.1" }
 ]
 
 tags: [

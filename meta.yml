@@ -30,7 +30,7 @@ dependencies:
       lib_name: "RocqCandy"
   - description: "[Copland Spec](https://github.com/ku-sldg/copland-spec)"
     opam:
-      name: "coq-copland-spec"
+      name: "rocq-copland-spec"
       version: '{ >= "0.1.1" }'
       lib_name: "CoplandSpec"
 coq_trans_deps_workaround: true # Default false if we dont need libraries with transitive dependencies, but if we do, then we need to set this to true
