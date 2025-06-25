@@ -8,7 +8,7 @@ Author:  Adam Petz, ampetz@ku.edu
 From RocqCandy Require Import All.
 From CoplandSpec Require Import Term_Defs.
 
-From CVM Require Import Attestation_Session.
+From CVM Require Export Attestation_Session.
 
 (** CVM monad state structure.
 
@@ -46,4 +46,5 @@ Definition CVM_Error_to_string (e : CVM_Error) : string :=
     end
   end.
 
-Definition CVM A : Type := State (cvm_st * Session_Config) A CVM_Error.
+Definition CVM A : Type := 
+  Config Session_Config (State cvm_st (Result A CVM_Error)).

@@ -1,28 +1,11 @@
 From RocqCandy Require Import All.
+From CoplandSpec Require Import ID_Type.
 
-Definition FS_Location := string.
+Definition FS_Location := ID_Type.
 Opaque FS_Location.
-Global Instance Stringifiable_FS_Location : Stringifiable FS_Location.
-typeclasses_eauto.
-Defined.
-Global Instance DecEq_FS_Location : DecEq FS_Location.
-typeclasses_eauto.
-Defined.
 
-Definition IP_Port := string.
+Definition IP_Port := ID_Type.
 Opaque IP_Port.
-Global Instance Stringifiable_IP_Port : Stringifiable IP_Port.
-typeclasses_eauto.
-Defined.
-Global Instance DecEq_IP_Port : DecEq IP_Port.
-typeclasses_eauto.
-Defined.
 
-Definition Public_Key := string.
+Definition Public_Key := ID_Type.
 Opaque Public_Key.
-Global Instance Stringifiable_Public_Key : Stringifiable Public_Key.
-typeclasses_eauto.
-Defined.
-Global Instance DecEq_Public_Key : DecEq Public_Key.
-typeclasses_eauto.
-Defined.

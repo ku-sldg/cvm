@@ -17,203 +17,69 @@
 From RocqCandy Require Import All.
 From CoplandSpec Require Import Term_Defs Event_System.
 From CVM Require Import Impl St Attestation_Session Monad Cvm_Axioms.
+Local Open Scope list_scope.
+
+Set Ltac2 In Ltac1 Profiling.
 
 Lemma invoke_ASP_config_immut : forall par e st sc res st' sc',
   invoke_ASP e par (st, sc) = (res, (st', sc')) ->
   sc = sc'.
 Proof.
-  ff (fun () => ltac1:(autounfold with cvm in *)).
-  u ().
+  ff (ux cvm).
 Qed.
 
 Lemma peel_n_rawev_result_spec : forall n ls ls1 ls2,
-  peel_n_rawev n ls = resultC (ls1, ls2) ->
+  peel_n_rawev n ls = res (ls1, ls2) ->
   ls = ls1 ++ ls2 /\ length ls1 = n.
 Proof.
-  induction n; ffa using cvm_monad_unfold; ffl.
+  induction n; ff u, a.
 Qed.
 
 Lemma peel_n_none_spec : forall n ls e,
-  peel_n_rawev n ls = errC e ->
+  peel_n_rawev n ls = err e ->
   length ls < n.
 Proof.
-  induction n; ffa using cvm_monad_unfold; ffl.
+  induction n; ff u, a, l.
 Qed.
-
-(*
-Lemma invoke_APPR_config_immut : forall et r st sc res st' sc' out_et,
-  invoke_APPR' r et out_et st sc = (res, st', sc') ->
-  sc = sc'.
-Proof.
-  induction et using EvidenceT_triple_ind; intros.
-  - (* mt *)
-    repeat cvm_monad_unfold; ff.
-  - (* nonce_evt *)
-    repeat cvm_monad_unfold.
-    target_break_match H.
-  - (* asp (mt) *)
-    repeat cvm_monad_unfold.
-    target_break_match H.
-  - (* asp (nonce) *)
-    repeat cvm_monad_unfold.
-    target_break_match H.
-  - (* asp (asp (mt)) *)
-    repeat cvm_monad_unfold.
-    target_break_match H.
-  - (* asp (asp (nonce)) *)
-    repeat cvm_monad_unfold.
-    target_break_match H.
-  - (* asp (asp (asp))*)
-    repeat cvm_monad_unfold.
-    admit.
-  - (* asp (asp (left))*)
-    repeat cvm_monad_unfold.
-    target_break_match H;
-    rewrite PeanoNat.Nat.eqb_eq in *; subst;
-    try (eapply IHet; 
-      lazymatch goal with
-      | H : apply_to_left_evt _ _ _ = _ |- _ => 
-        rewrite H
-      end; eauto; fail).
-    * eapply IHet.
-      result_monad_unfold.
-      target_break_match Hbm12.
-      assert (apply_to_left_evt (session_context s1)
-(apply_to_asp_under_wrap (session_context s1) a
-(fun e : EvidenceT =>
-invoke_APPR' r1 e (asp_evt p' (asp_paramsC a a3 p2 t0) (left_evt et))))
-et = apply_to_left_evt (session_context s1)
-(fun e : EvidenceT => invoke_APPR' ?r e ?out_et) et). 
-      find_rewrite.
-    eauto.
-
-
-
-
-
-  induction et using EvidenceT_triple_ind; simpl in *; cvm_monad_unfold;
-  intros; try find_injection; try simple congruence 1.
-  all: eauto 2.
-  all: try (timeout 5 (target_break_match H; subst; eapply IHet; try find_rewrite; eauto; fail)).
-  (* try (timeout 10 (eauto 2; target_break_match H; subst; eapply IHet; rewrite Hbm0; eauto; fail)). *)
-  - target_break_match H.
-  - target_break_match H.
-  - admit.
-  - break_match.
-    break_match.
-    break_match.
-    break_match; subst; try simple congruence 1.
-    * break_match; subst; try simple congruence 1.
-    * admit.
-  - break_match.
-    break_match.
-    target_break_match Heqp1.
-    break_match.
-    target_break_match Heqp1.
-    break_match.
-    break_match; subst.
-    * timeout 10 (target_break_match H).
-    * timeout 10 (target_break_match H).
-    * timeout 10 (target_break_match H).
-    * 
-  - (* asp (asp et') case *)
-    target_break_match H; try rewrite PeanoNat.Nat.eqb_eq in *.
-    all: subst.
-    all: eauto 2.
-    all: try (timeout 5 (result_monad_unfold; ff; fail)).
-    (* * rewrite String.eqb_eq in *; subst; repeat find_rewrite. *)
-      (* cvm_monad_unfold.
-      eapply IHet; clear IHet.
-      repeat find_rewrite.
-      target_break_match Heqp4; try rewrite PeanoNat.Nat.eqb_eq in *;
-      subst; eauto 2; try (timeout 5 (result_monad_unfold; ff; fail)).
-      all: repeat find_injection.
-      eapply IHet; clear IHet; ff.
-      eapply IHet; eauto. *)
-    all: admit.
-    (* * rewrite String.eqb_eq in *; subst.
-      eapply IHet; clear IHet.
-      simpl in *; cvm_monad_unfold.
-      repeat find_rewrite.
-      break_match.
-      break_match.
-      break_match.
-
-      simpl in *; cvm_monad_unfold.
-      eapply IHet; ff. *)
-  - target_break_match H; try rewrite PeanoNat.Nat.eqb_eq in *;
-    subst; eauto 2; try (timeout 10 (result_monad_unfold; ff;
-      eapply IHet; find_higher_order_rewrite; eauto; fail)).
-    * result_monad_unfold; ff.
-      eapply IHet.
-      admit.
-  - target_break_match H; try rewrite PeanoNat.Nat.eqb_eq in *;
-    subst; eauto 2; result_monad_unfold; ff;
-    try (timeout 10 (eapply IHet; find_higher_order_rewrite; eauto)).
-    * result_monad_unfold; ff.
-      admit.
-  - target_break_match H; try rewrite PeanoNat.Nat.eqb_eq in *;
-    subst; eauto 2;
-    try (timeout 10 (result_monad_unfold; ff;
-      repeat find_eapply_lem_hyp peel_n_rawev_result_spec; ff;
-      find_eapply_lem_hyp IHet1; subst; eauto)).
-  - target_break_match H; subst;
-    repeat find_eapply_lem_hyp peel_n_rawev_result_spec; ff;
-    find_eapply_lem_hyp IHet1; subst; eauto.
-Qed.
-Admitted.
-*)
 
 Lemma invoke_APPR_config_immut : forall G et r st sc res st' sc' out_et,
   G = session_context sc ->
-  invoke_APPR' r et out_et st sc = (res, st', sc') ->
+  invoke_APPR' r et out_et (st, sc) = (res, (st', sc')) ->
   sc = sc'.
 Proof.
   intros G.
   induction et using (Evidence_subterm_path_Ind_special G);
-  simpl in *; intros;
-  cvm_monad_unfold.
-  - ff.
-  - target_break_match H0.
-  - target_break_match H2; ffa.
-  - target_break_match H2.
-    ateb_unpack Hbm3; ffa.
-  - target_break_match H1.
-  - target_break_match H1; ateb_unpack Hbm0; ffa.
-  - target_break_match H1; ateb_unpack Hbm0; ffa.
-  - target_break_match H0; ffa.
+  simpl in *; intros.
+  - ff (ux cvm).
+  - ff (ux cvm).
+  - ux cvm (); target_break_match ident:(H2); ff a.
+  - ux cvm (); target_break_match ident:(H2);
+    ateb_unpack H7; ff a.
+  - ux cvm (); target_break_match ident:(H1).
+  - ux cvm (); target_break_match ident:(H1); ateb_unpack H3; ff a.
+  - ux cvm (); target_break_match ident:(H1); ateb_unpack H3; ff a.
+  - ux cvm (); target_break_match ident:(H0); ff a.
+    * destruct p.
+      find_eapply_lem_hyp IHet1; try reflexivity;
+      find_eapply_lem_hyp IHet2; try reflexivity;
+      subst; try reflexivity.
+    * destruct p.
+      find_eapply_lem_hyp IHet1; try reflexivity;
+      find_eapply_lem_hyp IHet2; try reflexivity;
+      subst; try reflexivity.
 Qed.
 
 Lemma build_cvm_config_immut : forall t e st sc res st' sc',
-  build_cvm e t st sc = (res, st', sc') ->
+  build_cvm e t (st, sc) = (res, (st', sc')) ->
   sc = sc'.
 Proof.
-  induction t; simpl in *; cvm_monad_unfold; ff;
+  induction t; simpl in *; ff (ux cvm);
+  dump.
+  (* induction t; simpl in *; ff (ux cvm);
   try (find_eapply_lem_hyp IHt1;
     find_eapply_lem_hyp IHt2; ff);
-  find_eapply_lem_hyp invoke_APPR_config_immut; ff.
+  find_eapply_lem_hyp invoke_APPR_config_immut; ff. *)
 Qed.
-
-(* 
-Lemma split_evidence_determinisitic : forall e st1 st2 res1 res2 st1' st2' et1 et2 sc sc1' sc2',
-  split_evidence e et1 et2 st1 sc = (res1, st1', sc1') ->
-  split_evidence e et1 et2 st2 sc = (res2, st2', sc2') ->
-  res1 = res2.
-Proof.
-  intros.
-  unfold split_evidence in *.
-  cvm_monad_unfold; ff.
-Qed.
-*)
-
-(* 
-Lemma split_evidence_state_immut : forall e sc sc' res st st' et1 et2,
-  split_evidence e et1 et2 st sc = (res, st', sc') ->
-  st = st' /\ sc = sc'.
-Proof.
-  unfold split_evidence in *; cvm_monad_unfold; ff.
-Qed.
-*)
 
 Lemma check_cvm_policy_preserves_state : forall t p evt st1 st1' r sc sc',
   check_cvm_policy t p evt st1 sc = (r, st1', sc') ->
@@ -221,15 +87,6 @@ Lemma check_cvm_policy_preserves_state : forall t p evt st1 st1' r sc sc',
 Proof.
   induction t; simpl in *; intuition; eauto; ffa using cvm_monad_unfold.
 Qed.
-
-(* Lemma check_cvm_policy_same_outputs : forall t p evt st1 st1' r1 st2 st2' r2 sc1 sc2 sc1' sc2',
-  check_cvm_policy t p evt st1 sc1 = (r1, st1') ->
-  check_cvm_policy t p evt st2 sc2 = (r2, st2') ->
-  (policy sc1 = policy sc2) ->
-  r1 = r2 /\ st1 = st1' /\ st2 = st2'.
-Proof.
-  induction t; simpl in *; intuition; eauto; ffa using cvm_monad_unfold.
-Qed. *)
 
 Lemma invoke_APPR_deterministic : forall G e sc sc1' sc2' st1 st2 st1' st2' res1 res2 r oe,
   G = session_context sc ->

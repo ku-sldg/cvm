@@ -24,5 +24,4 @@ Definition make_JSON_FS_Location_Request (dir : FS_Location) (aspid : FS_Locatio
 Definition parallel_vm_thread (l:Loc) (p:Plc) (e:Evidence) (t: Term) : Result Evidence CVM_Error.  Admitted.
 
 Definition do_start_par_thread (loc:Loc) (e: Evidence) (t: Term) : CVM unit :=
-  ret tt.
-
+  ↑cs (↑sr (res tt)).
