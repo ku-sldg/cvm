@@ -17,21 +17,21 @@ Fixpoint build_cvm (e : Evidence) (t: Term) : CVM Evidence :=
   | asp a => do_prim e a 
   | att q t' => doRemote q e t'
   | lseq t1 t2 =>
-    e1 <~ build_cvm e t1 ;;;
+    e1 <- build_cvm e t1 ;;cvm
     build_cvm e1 t2
 
   | bseq s t1 t2 =>
-    split_ev ;;;
-    e1r <~ build_cvm (splitEv_l s e) t1 ;;;
-    e2r <~ build_cvm (splitEv_r s e) t2 ;;;
+    split_ev ;;cvm
+    e1r <- build_cvm (splitEv_l s e) t1 ;;cvm
+    e2r <- build_cvm (splitEv_r s e) t2 ;;cvm
     join_seq e1r e2r
 
   | bpar s t1 t2 =>
-    split_ev ;;;
+    split_ev ;;cvm
     (* We will make the LOC = event_id for start of thread *)
     (* start a parallel thread working on the evidence split for t2 *)
-    loc <~ start_par_thread (splitEv_r s e) t2 ;;;
-    e1r <~ build_cvm (splitEv_l s e) t1 ;;;
-    e2r <~ wait_par_thread loc (splitEv_r s e) t2 ;;;
+    loc <- start_par_thread (splitEv_r s e) t2 ;;cvm
+    e1r <- build_cvm (splitEv_l s e) t1 ;;cvm
+    e2r <- wait_par_thread loc (splitEv_r s e) t2 ;;cvm
     join_seq e1r e2r
   end.

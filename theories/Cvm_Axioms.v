@@ -6,7 +6,7 @@ Axiom parallel_vm_thread_axiom : forall i t e p res,
   forall st sc,
     st = {| st_trace := nil; st_evid := i |} ->
     session_plc sc = p ->
-    exists st', build_cvm e t (st, sc) = (res, (st', sc)).
+    exists st', build_cvm e t sc st = (res, st').
 
 Axiom do_remote_res_axiom : forall sc p e t res,
   do_remote sc p e t = res ->
@@ -16,6 +16,6 @@ Axiom do_remote_res_axiom : forall sc p e t res,
     created via the passed session *)
     st = {| st_trace := nil; st_evid := i |} ->
     exists st',
-      build_cvm e t (st, sc') = (res, (st', sc')) /\
+      build_cvm e t sc st = (res, st') /\
       session_plc sc' = p /\
       session_context sc' = session_context sc.
