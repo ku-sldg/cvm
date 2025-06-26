@@ -392,7 +392,8 @@ Definition do_remote (sc : Session_Config) (pTo: Plc) (e : Evidence) (t:Term)
       end
   | None => err (dispatch_error Unavailable)
   end.
-Hint Unfold do_remote : cvm.
+(* We make this Opaque because we want to hide its implementation details: we axiomatically manage remote calls instead *)
+Opaque do_remote.
 
 Definition doRemote_session' (pTo:Plc) (e:Evidence) (t:Term) 
     : CVM Evidence := 
