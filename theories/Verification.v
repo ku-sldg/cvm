@@ -19,8 +19,6 @@ From CoplandSpec Require Import Term_Defs Event_System.
 From CVM Require Import Impl St Attestation_Session Monad Cvm_Axioms.
 Local Open Scope list_scope.
 
-Set Ltac2 In Ltac1 Profiling.
-
 Lemma peel_n_rawev_result_spec : forall n ls ls1 ls2,
   peel_n_rawev n ls = res (ls1, ls2) ->
   ls = ls1 ++ ls2 /\ length ls1 = n.
