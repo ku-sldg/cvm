@@ -1,8 +1,7 @@
 From RocqCandy Require Import All.
 From CVM.Interface Require Import Interface_Types Interface_String_Vars.
 From RocqJSON Require Import JSON.
-From CoplandSpec Require Import Term_Defs.
-From CVM Require Import Attestation_Session.
+From CoplandSpec Require Import Term_Defs Attestation_Session.
 
 (* Protocol Run Request *)
 Global Instance Jsonifiable_ProtocolRunRequest `{Jsonifiable Term,

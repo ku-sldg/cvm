@@ -15,8 +15,8 @@
 
 *)
 From RocqCandy Require Import All.
-From CoplandSpec Require Import Term_Defs Event_System.
-From CVM Require Import Impl St Attestation_Session Monad Cvm_Axioms.
+From CoplandSpec Require Import Term_Defs Event_System Attestation_Session.
+From CVM Require Import Impl St Monad Cvm_Axioms.
 Local Open Scope list_scope.
 
 Lemma peel_n_rawev_result_spec : forall n ls ls1 ls2,

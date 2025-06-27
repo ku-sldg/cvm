@@ -6,9 +6,7 @@ CVM Monad definition.
 Author:  Adam Petz, ampetz@ku.edu
 *)
 From RocqCandy Require Import All.
-From CoplandSpec Require Import Term_Defs.
-
-From CVM Require Export Attestation_Session.
+From CoplandSpec Require Export Term_Defs Attestation_Session.
 
 (** CVM monad state structure.
 

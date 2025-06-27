@@ -12,7 +12,7 @@
  *)
 From CoplandSpec Require Import Term_Defs.
 From RocqCandy Require Import StateMonad.
-From CVM Require Import Attestation_Session St.
+From CVM Require Import St.
 
 Definition make_JSON_Network_Request (uuid : IP_Port) (js : JSON) : Result JSON string. Admitted.
 

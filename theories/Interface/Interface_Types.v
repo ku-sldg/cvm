@@ -1,6 +1,5 @@
 From RocqJSON Require Import JSON.
-From CoplandSpec Require Import Term_Defs.
-From CVM Require Import Attestation_Session.
+From CoplandSpec Require Import Term_Defs Attestation_Session.
 
 (* Interface Types *)
 Record ProtocolRunRequest := 
