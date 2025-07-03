@@ -85,9 +85,8 @@ Definition cvm_front_end : unit :=
     manifest_val <- from_string manifest_arg ;;
     (* Getting the ASP binary argument *)
     asp_bin_arg <- unwrap_opt (args_res ![ "asp_bin" ]) "ASP binary argument is required." ;;
-    asp_bin_arg <- unwrap_opt (arg_value asp_bin_arg) "ASP binary argument value was not found." ;;
-    asp_bin_val <- from_string asp_bin_arg ;;
-    let am_manager_conf := (mkAM_Man_Conf asp_bin_val manifest_val) in
+    asp_bin_val <- unwrap_opt (arg_value asp_bin_arg) "ASP binary argument value was not found." ;;
+    let am_manager_conf := (mkAM_Man_Conf manifest_val asp_bin_val) in
     (* Getting the request argument *)
     request_arg <- unwrap_opt (args_res ![ "req" ]) "Request argument is required." ;;
     request_arg <- unwrap_opt (arg_value request_arg) "Request argument value was not found." ;;
