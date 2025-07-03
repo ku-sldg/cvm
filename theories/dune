@@ -6,7 +6,26 @@
 (coq.theory
  (name CVM)
  (package rocq-cvm)
- 
- 
  (synopsis "The Copland Virtual Machine (CVM)"))
 
+(rule
+ (target cvm)
+ (deps
+  ; NOTE: We depend on the final generated file, after this is dont the build should be ready
+  (file FrontEnd.vo))
+ (action
+  (run
+   bake
+   --mode
+   build
+   --stubs
+   %{project_root}/../../stubs/
+   --cc-flags
+   "-lzmq"
+   --out
+   cvm.cml
+   ../FrontEnd.cml)))
+
+(install
+ (section bin)
+ (files cvm))

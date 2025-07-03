@@ -1,0 +1,85 @@
+(* deps: ResultMonad St System_Types Term_Defs_Core ExtractionPrelude $FFI.SocketFFI $FFI.SysFFI $JSON_Axioms *)
+
+structure IO_Axioms = struct
+ (** val make_network_request :
+     System_Types.coq_IP_Port -> string -> (string, string)
+     ResultMonad.coq_Result **)
+
+    fun decodeUUID (u : System_Types.coq_IP_Port) = 
+      (* Splits at ":" character, into (ip, port) *)
+      let val colonInt = 
+            case (String.findi (fn c => (Char.chr 58) = c) 0 u) of
+              None => raise FalseException "Unable to decode UUID, no splitting ':' found"
+              | Some v => v
+          val ip = String.substring u 0 colonInt
+          (* This is retrieving the rest of the string *)
+          val port = String.extract u (colonInt + 1) None
+          val port' = case Int.fromString port of
+                        Some v => v
+                        | None => raise FalseException "Unable to decode UUID, port not integer"
+      in
+        (ip, port')
+      end
+
+  val make_network_request : (System_Types.coq_IP_Port -> string -> (string,
+                            string) ResultMonad.coq_Result) =
+    (fn ipport => fn reqstr =>
+    let 
+      val (ip, port) = decodeUUID ipport
+      val _ = print ("Decoded UUID to: " ^ ip ^ ":" ^ (Int.toString port) ^ "\n")
+      val socket = SocketFFI.connect ip port
+      val _ = print ("Connected to " ^ ip ^ ":" ^ (Int.toString port) ^ "\n")
+      val sendReq = SocketFFI.send socket reqstr
+      val resp = SocketFFI.recv socket
+      val _ = SocketFFI.close socket
+    in
+      (* TODO: Should really do some error handling in here! *)
+      ResultMonad.Coq_res resp
+    end
+    )
+   (* failwith "AXIOM TO BE REALIZED (CVM.IO_Axioms.make_network_request)" *)
+
+
+ (** val make_fs_request :
+     System_Types.coq_FS_Location -> string -> (string, string)
+     ResultMonad.coq_Result **)
+
+  val make_fs_request : (System_Types.coq_FS_Location -> string -> (string,
+                       string) ResultMonad.coq_Result) =
+    (fn path => fn reqstr =>
+      (let 
+        val _ = print ("Sending a request to the FS: " ^ path ^ "\n")
+        val req_str = path ^ " \"" ^ (SysFFI.shellEscapeString reqstr) ^ "\""
+        val _ = print ("Request string: " ^ req_str ^ "\n")
+        val resp = SysFFI.c_popen_string req_str
+        val _ = print ("Got back a response from the ASP: \n" ^ resp ^ "\n")
+      in
+        (* TODO: Should really do some error handling in here! *)
+        ResultMonad.Coq_res resp
+      end))
+   (* failwith "AXIOM TO BE REALIZED (CVM.IO_Axioms.make_fs_request)" *)
+
+ (** val aspid_to_fs_location :
+     Term_Defs_Core.coq_ASP_ID -> System_Types.coq_FS_Location **)
+
+ val aspid_to_fs_location : (Term_Defs_Core.coq_ASP_ID ->
+                            System_Types.coq_FS_Location) =
+    (fn a => a)
+   (* failwith "AXIOM TO BE REALIZED (CVM.IO_Axioms.aspid_to_fs_location)" *)
+
+ (** val parallel_vm_thread :
+     Term_Defs_Core.coq_Loc -> Term_Defs_Core.coq_Plc ->
+     Term_Defs_Core.coq_Evidence -> Term_Defs_Core.coq_Term ->
+     (Term_Defs_Core.coq_Evidence, St.coq_CVM_Error) ResultMonad.coq_Result **)
+
+ val parallel_vm_thread : (Term_Defs_Core.coq_Loc -> Term_Defs_Core.coq_Plc
+                          -> Term_Defs_Core.coq_Evidence ->
+                          Term_Defs_Core.coq_Term ->
+                          (Term_Defs_Core.coq_Evidence, St.coq_CVM_Error)
+                          ResultMonad.coq_Result) =
+    fn loc => fn plc => fn ev => fn term =>
+      ResultMonad.Coq_err 
+        (St.Coq_dispatch_error 
+          (Attestation_Session.Runtime "PARALLEL VM THREAD NOT IMPLEMENTED"))
+   (* failwith "AXIOM TO BE REALIZED (CVM.IO_Axioms.parallel_vm_thread)" *)
+end

@@ -1,6 +1,6 @@
 From RocqCandy Require Import All.
 From CoplandSpec Require Import Attestation_Session.
-From CVM Require Import IO_Axioms Monad Impl.
+From CVM Require Import IO_Utils Monad Impl.
 
 Axiom parallel_vm_thread_axiom : forall i t e p res,
   parallel_vm_thread i p e t = res ->

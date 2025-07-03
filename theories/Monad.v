@@ -6,7 +6,7 @@
 *)
 From CoplandSpec Require Import Term_Defs Event_System Attestation_Session.
 
-From CVM Require Export St IO_Axioms Utils.
+From CVM Require Export St IO_Utils Utils.
 From CVM Require Import Interface.Interface.
 
 (** * CVM monadic primitive operations *)

@@ -1,0 +1,261 @@
+(* deps: $Parser *)
+
+structure CakeML_Json = struct    
+    exception Exception string
+
+    (* trueParser: (json, char) parser
+      * Parses the JSON boolean literal `true`.
+      *)
+    val trueParser =
+        Parser.map (const (JSON_Type.JSON_Boolean True)) (Parser.string "true")
+
+    (* falseParser: (json, char) parser
+      * Parses the JSON boolean literal `false`.
+      *)
+    val falseParser =
+        Parser.map (const (JSON_Type.JSON_Boolean False)) (Parser.string "false")
+
+    (* signParser: (char, char) parser
+      * Parses an optional numeric sign '+' or '-', defaulting to '+'.
+      *)
+    val signParser =
+        Parser.option #"+" (Parser.oneOf [#"+", #"-"])
+
+    (* signFunc: char -> string -> string
+      * `signFunc c str`
+      * If `c` is '+', then return `str`. Otherwise return `"-" ^ str`.
+      *)
+    fun signFunc signChr numStr =
+        if signChr = #"+" 
+        then numStr 
+        else (* We raise an error here, 
+          we only handle positive numbers (for nat) ! *)
+        raise Exception "Negative numbers are not supported"
+
+    (* digit1_9 : (string, char) parser
+      * Parses a non-zero decimal digit and turns it into a string.
+      *)
+    val digit1_9 =
+        Parser.map
+            String.str
+            (Parser.satisfy (fn c => Char.<= #"1" c andalso Char.<= c #"9"))
+    (* intPartParser: (string, char) parser
+      * Parses the unsigned integer part of a number which has no leading
+      * zeros.
+      *)
+    val intPartParser =
+        Parser.label
+            "Error parsing integer part of a JSON number."
+            (Parser.choice [
+                Parser.bind
+                    digit1_9
+                    (fn d =>
+                        Parser.map
+                            (fn ds => String.concat [d, String.implode ds])
+                            (Parser.many Parser.digit)),
+                Parser.map String.str (Parser.char #"0")
+            ])
+
+    (* (* exponPartParser: string -> (string, char) parser
+      * Takes the mantissa part of a number, and returns a parser that
+      * consumes an optional exponential part.
+      *)
+    fun exponPartParser mantissa =
+        Parser.label "Error parsing exponential part of a JSON number"
+            (Parser.map
+                (fn expon => String.concat [mantissa, "e", expon])
+                (Parser.seq
+                    (Parser.oneOf [#"e", #"E"])
+                    (Parser.bind signParser
+                        (fn signChar =>
+                            Parser.map
+                                (fn exponChars =>
+                                    signFunc signChar (String.implode exponChars))
+                                (Parser.many1 Parser.digit))))) *)
+
+    (* (* fracPartParser: string -> ((string, string) result, char) parser
+      * Parses the fractional part and exponential part of a number, i.e.
+      * the part starting with '.' or 'e'/'E'. The given string is the
+      * integer part of the number. The result returned upon a successful
+      * parse is either a string representation of a float wrapped as an Ok
+      * value or an a string representation of an integer wrapped as an Err
+      * value.
+      *)
+    fun fracPartParser intPart =
+        Parser.label "Error parsing fractional part of a JSON number."
+            (Parser.map
+                (fn number => Ok number)
+                (Parser.choice [
+                    Parser.seq (Parser.char #".")
+                        (Parser.bind
+                            (Parser.map String.implode (Parser.many Parser.digit))
+                            (fn fracPart =>
+                                let
+                                    val mantissa = String.concat [intPart, ".", fracPart]
+                                in
+                                    Parser.option mantissa
+                                        (exponPartParser mantissa)
+                                end)),
+                    exponPartParser intPart
+                ])) *)
+
+    (* numberParser: (json, char) parser
+      * Parses a JSON number value without backtracking by first consuming
+      * any integer part and then splitting into a result datatype depending
+      * upon the occurrence of '.', 'e', or 'E'.
+      *)
+    val numberParser =
+        Parser.map (fn int_str => 
+          case Int.fromString int_str of
+            None => raise (Exception "Invalid JSON number value.")
+          | Some v => JSON_Type.JSON_Nat v)
+          intPartParser
+
+    (* quoteParser: (char, char) parser
+      * Parses the '"' character.
+      *)
+    val quoteParser = Parser.char #"\""
+
+    (* backslash: char; the '/' character *)
+    val backslash = Char.chr 92
+
+    (* bslashParser: (char, char) parser
+      * Parses the backslash character.
+      *)
+    val bslashParser = Parser.char backslash
+
+    (* hexits4: (string, char) parser
+      * Parses four hexadecimal numerals.
+      *)
+    val hexits4 =
+        Parser.label
+            "Error parsing hex numerals of control character in a JSON string value."
+            (Parser.map String.implode (Parser.count 4 Parser.hexDigit))
+
+    (* controlCharParser: (string, char) parser
+      * Parses control characters from JSON string literals.
+      *)
+    val controlCharParser =
+        Parser.label
+            "Error parsing control character in a JSON string value."
+            (Parser.seq bslashParser 
+                (Parser.choice [
+                    Parser.map (const "\"") quoteParser,
+                    Parser.map (const (String.str backslash)) bslashParser,
+                    Parser.map (const "/") (Parser.char #"/"),
+                    Parser.map
+                        (const (String.str (Char.chr 8)))
+                        (Parser.char #"b"),
+                    Parser.map
+                        (const (String.str (Char.chr 9)))
+                        (Parser.char #"t"),
+                    Parser.map 
+                        (const (String.str (Char.chr 10)))
+                        (Parser.char #"n"),
+                    Parser.map 
+                        (const (String.str (Char.chr 12)))
+                        (Parser.char #"f"),
+                    Parser.map 
+                        (const (String.str (Char.chr 13)))
+                        (Parser.char #"r"),
+                    Parser.map
+                        (fn hexits => String.concat ["\\u", hexits])
+                        (Parser.seq (Parser.char #"u") hexits4)
+                ]))
+
+    (* stringCharParser: (string, char) parser
+      * Parses a character in a JSON string literal
+      *)
+    val stringCharParser =
+        Parser.label
+            "Error parsing character in a JSON string value."
+            (Parser.choice [
+                Parser.map String.str (Parser.noneOf [#"\"", backslash]),
+                controlCharParser
+            ])
+
+    (* stringParserHelper: (string, char) parser
+      * Parses a JSON string.
+      *)
+    val stringParserHelper =
+        Parser.map (fn strs => String.concat strs)
+            (Parser.between quoteParser quoteParser
+                (Parser.many stringCharParser))
+
+    (* stringParser: (json, char) parser
+      * Parses a JSON string literal.
+      *)
+    val stringParser =
+        Parser.map (fn str => JSON_Type.JSON_String str) stringParserHelper
+
+    (* jsonParser: (json, char) parser
+      * Parses a JSON value.
+      *)
+    fun jsonParser stream =
+        Parser.label "Error parsing JSON value."
+            (Parser.seq (Parser.spaces)
+                (Parser.bind
+                    (Parser.choice [
+                        trueParser, falseParser, 
+                        Parser.label "Error parsing JSON number value." numberParser,
+                        Parser.label "Error parsing JSON string value." stringParser,
+                        Parser.label "Error parsing JSON array value." arrayParser,
+                        Parser.label "Error parsing JSON object value." objParser])
+                    (fn json => Parser.return json Parser.spaces)))
+            stream
+
+    (* arrayParser: (json, char) parser
+      * Parses a JSON array literal.
+      *)
+    and arrayParser stream =
+        Parser.map (fn jsons => JSON_Type.JSON_Array jsons)
+            (Parser.between
+                (Parser.seq (Parser.char #"[") Parser.spaces)
+                (Parser.char #"]")
+                (Parser.sepBy jsonParser (Parser.char #",")))
+            stream
+    (* keyValParser: ((string, json), string) parser
+      * Parses a JSON key-value pair.
+      *)
+    and keyValParser stream =
+        Parser.bind stringParserHelper
+            (fn key => Parser.seq
+                        (Parser.seq Parser.spaces (Parser.char #":"))
+                        (Parser.map (fn value => (key, value))
+                            jsonParser))
+            stream
+    (* objParser: (json, char) parser
+      * Parses a JSON object literal.
+      *)
+    and objParser stream =
+        Parser.map
+            (fn strJsons => JSON_Type.JSON_Object strJsons)
+            (Parser.between
+                (Parser.seq (Parser.char #"{") Parser.spaces)
+                (Parser.char #"}")
+                (Parser.sepBy
+                    keyValParser
+                    (Parser.seq (Parser.char #",") Parser.spaces)))
+            stream
+    (* parseSingleton: (json, char) parser
+      * Parses exactly one JSON object.
+      *)
+    val parseSingleton =
+        Parser.bind jsonParser
+            (fn js => Parser.return js Parser.eof)
+    (* parseMultiple: (json list, char) parser
+      * Parsers zero or more JSON objects.
+      *)
+    val parseMultiple =
+        Parser.bind (Parser.many jsonParser)
+            (fn jss => Parser.return jss Parser.eof)
+    (* parse: string -> (json, string) result
+      * Parses a JSON value from the given string. Expects exactly one JSON
+      * value.
+      *)
+    fun parse str = Parser.parse parseSingleton str
+    (* parseMany: string -> (json list, string) result
+      * Parses zero or more JSON values from the given string.
+      *)
+    fun parseMany str = Parser.parse parseMultiple str
+end

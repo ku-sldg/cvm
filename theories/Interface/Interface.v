@@ -1,1 +1,1 @@
-From CVM.Interface Require Export Interface_Types Interface_JSON.
+From CVM.Interface Require Export Interface_Types Interface_JSON Interface_String_Vars.

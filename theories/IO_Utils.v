@@ -13,13 +13,19 @@
 From CoplandSpec Require Import Term_Defs.
 From RocqCandy Require Import StateMonad.
 From CVM Require Import St.
+From CVM Require Export IO_Axioms.
 
-Definition make_network_request (ipport : IP_Port) (str : string) 
-    : Result string string. Admitted.
+Definition make_JSON_Network_Request (ipport : IP_Port) (js : JSON) 
+    : Result JSON string :=
+  resstr <- make_network_request ipport (to_string js) ;;
+  from_string resstr.
 
-Definition make_fs_request (path : FS_Location) (str : string) : Result string string. Admitted.
+Definition fs_location_join (dir : FS_Location) (tail : FS_Location) : FS_Location :=
+  dir ++ "/" ++ tail.
 
-Definition aspid_to_fs_location (aspid : ASP_ID) : FS_Location. Admitted.
+Definition make_JSON_FS_Location_Request (dir : FS_Location) (aspid : FS_Location) (js : JSON) : Result JSON string :=
+  resstr <- make_fs_request (fs_location_join dir aspid) (to_string js) ;;
+  from_string resstr.
 
-(** * Stub to simulate EvidenceT collected by a parallel CVM instance *)
-Definition parallel_vm_thread (l:Loc) (p:Plc) (e:Evidence) (t: Term) : Result Evidence CVM_Error.  Admitted.
+Definition do_start_par_thread (loc:Loc) (e: Evidence) (t: Term) : CVM unit :=
+  CVM_ret tt.

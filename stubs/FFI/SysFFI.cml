@@ -1,0 +1,33 @@
+(* deps: $FFI.FFI #FFI.sys_ffi #FFI.buffer_manager #FFI.shared_ffi_fns *)
+
+structure SysFFI = struct
+  exception Exception string
+
+  local 
+      fun ffi_system x y = #(system) x y
+      fun ffi_popen_string x y = #(popen_string) x y
+  in
+    fun escFn c =
+        case Char.ord c of
+          8  => "\\b"
+        |  9  => "\\t"
+        | 10  => "\\n"
+        | 12  => "\\f"
+        | 13  => "\\r"
+        | 34  => "\\\""
+        | _   => String.str c
+
+    fun shellEscapeString str =
+        String.concat (List.map escFn (String.explode str))
+
+    (* () -> string *)
+    fun c_popen_string (com) = 
+      let val command_bs = BString.fromString com
+          val resp_bs = FFI.buffered_call ffi_popen_string command_bs
+      in 
+        BString.toString resp_bs
+      end
+      handle _ => raise (Exception "Unknown Error thrown from c_popen_string, likely check that the word8 array is right length that is expected and not accessing something outside of its bounds")
+  end
+
+end

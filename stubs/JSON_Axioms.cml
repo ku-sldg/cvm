@@ -1,0 +1,11 @@
+(* deps: JSON_Type ResultMonad ExtractionPrelude $CakeML_Json *)
+
+structure JSON_Axioms = struct
+ (** val coq_JSON_from_string :
+     string -> (JSON_Type.coq_JSON, string) ResultMonad.coq_Result **)
+
+ val coq_JSON_from_string : (string -> (JSON_Type.coq_JSON, string)
+                            ResultMonad.coq_Result) =
+    CakeML_Json.parse
+   (* failwith "AXIOM TO BE REALIZED (RocqJSON.JSON_Axioms.JSON_from_string)" *)
+end
