@@ -21,6 +21,9 @@ depends: [
   "coq" 
   "rocq-candy" { >= "0.2.1" }
   "rocq-copland-spec" { >= "0.1.1" }
+  "rocq-copland-manifest-tools" { >= "0.2.4" }
+  "rocq-EasyBakeCakeML" { >= "0.5.0" }
+  "rocq-bake" { >= "1.2.1" }
 ]
 
 tags: [

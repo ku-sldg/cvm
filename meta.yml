@@ -33,6 +33,20 @@ dependencies:
       name: "rocq-copland-spec"
       version: '{ >= "0.1.1" }'
       lib_name: "CoplandSpec"
+  - description: "[CoplandManifestTools](https://github.com/ku-sldg/copland-manifest-tools)"
+    opam:
+      name: "rocq-copland-manifest-tools"
+      version: '{ >= "0.2.4" }'
+      lib_name: "CoplandManifestTools"
+  - description: "[EasyBakeCakeML](https://github.com/Durbatuluk1701/EasyBakeCakeML)"
+    opam:
+      name: "rocq-EasyBakeCakeML"
+      version: '{ >= "0.5.0" }'
+      lib_name: "EasyBakeCakeML"
+  - description: "[Bake](https://github.com/Durbatuluk1701/bake)"
+    opam:
+      name: "rocq-bake"
+      version: '{ >= "1.2.1" }'
 coq_trans_deps_workaround: true # Default false if we dont need libraries with transitive dependencies, but if we do, then we need to set this to true
 # This is due to https://github.com/ocaml/dune/issues/11483
 
