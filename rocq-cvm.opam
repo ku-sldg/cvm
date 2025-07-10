@@ -24,6 +24,7 @@ depends: [
   "rocq-copland-manifest-tools" { >= "0.2.4" }
   "rocq-EasyBakeCakeML" { >= "0.5.0" }
   "bake" { >= "1.2.1" }
+  "conf-zmq" { >= "0.1.0" }
 ]
 
 tags: [
@@ -34,8 +35,10 @@ authors: [
 ]
 
 depexts: [
-  ["zeromq"] {os-family = "debian" | os-family = "ubuntu"}
-  ["zeromq"] {os = "macos" & os-distribution = "homebrew"}
-  ["zeromq-devel"] {os-family = "fedora" | os-family = "centos" | os-family = "rhel"}
-  ["zeromq-dev"] {os = "alpine"}
+  ["libzmq3-dev"] {os-distribution = "debian" | os-distribution = "ubuntu"}
+  ["zeromq"] {os-distribution = "arch" | os-distribution = "nixos"}
+  ["zeromq"] {os-distribution = "homebrew" & os = "macos"}
+  ["zeromq-devel"] {os-distribution = "centos" | os-distribution = "fedora" | os-distribution = "opensuse" | os-distribution = "rhel"}
+  ["zeromq-dev"] {os-distribution = "alpine"}
+  ["cygwin-devel" "libzmq-devel"] {os-distribution = "cygwin"}
 ]

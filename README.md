@@ -19,7 +19,7 @@ The Copland Virtual Machine (CVM) is a Rocq library that formalizes a virtual ma
 - Author(s):
   - Will Thomas
 - License: [Creative Commons Attribution Share Alike 4.0 International](LICENSE)
-- Compatible Coq versions: 9.0 later
+- Compatible Rocq/Coq versions: 9.0 later
 - Compatible OCaml versions: 4.12 or later
 - Additional dependencies:
   - [RocqCandy](https://github.com/ku-sldg/rocq-candy)
@@ -27,6 +27,7 @@ The Copland Virtual Machine (CVM) is a Rocq library that formalizes a virtual ma
   - [CoplandManifestTools](https://github.com/ku-sldg/copland-manifest-tools)
   - [EasyBakeCakeML](https://github.com/Durbatuluk1701/EasyBakeCakeML)
   - [Bake](https://github.com/Durbatuluk1701/bake)
+  - [conf-zmq](https://opam.ocaml.org/packages/conf-zmq/)
   - [Dune](https://dune.build) 3.17 or later
 - Related publication(s): none
 
