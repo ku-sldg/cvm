@@ -32,3 +32,10 @@ tags: [
 authors: [
   "Will Thomas <30wthomas@ku.edu>"
 ]
+
+depexts: [
+  ["zeromq"] {os-family = "debian" | os-family = "ubuntu"}
+  ["zeromq"] {os = "macos" & os-distribution = "homebrew"}
+  ["zeromq-devel"] {os-family = "fedora" | os-family = "centos" | os-family = "rhel"}
+  ["zeromq-dev"] {os = "alpine"}
+]
