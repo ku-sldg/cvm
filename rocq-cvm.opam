@@ -3,7 +3,7 @@
 
 opam-version: "2.0"
 maintainer: "30wthomas@ku.edu"
-version: "0.1.0"
+version: "0.1.1"
 
 homepage: "https://github.com/ku-sldg/cvm"
 dev-repo: "git+https://github.com/ku-sldg/cvm.git"
@@ -23,7 +23,7 @@ depends: [
   "rocq-copland-spec" { >= "0.1.1" }
   "rocq-copland-manifest-tools" { >= "0.2.4" }
   "rocq-EasyBakeCakeML" { >= "0.5.0" }
-  "bake" { >= "1.2.1" }
+  "bake" { >= "1.4.0" }
   "conf-zmq" { >= "0.1" }
 ]
 

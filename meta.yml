@@ -10,7 +10,7 @@ authors:
   - name: "Will Thomas"
     email: "30wthomas@ku.edu"
 opam-file-maintainer: "30wthomas@ku.edu" # Need a strong default here or we will accidentally email a Coq developer
-opam-file-version: "0.1.0"
+opam-file-version: "0.1.1"
 
 ######################################################
 # NOTE: Optional Extra Info
@@ -46,7 +46,7 @@ dependencies:
   - description: "[Bake](https://github.com/Durbatuluk1701/bake)"
     opam:
       name: "bake"
-      version: '{ >= "1.2.1" }'
+      version: '{ >= "1.4.0" }'
   - description: "[conf-zmq](https://opam.ocaml.org/packages/conf-zmq/)"
     opam:
       name: "conf-zmq"
