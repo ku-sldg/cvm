@@ -26,9 +26,9 @@ structure IO_Axioms = struct
     (fn ipport => fn reqstr =>
     let 
       val (ip, port) = decodeUUID ipport
-      val _ = print ("Decoded UUID to: " ^ ip ^ ":" ^ (Int.toString port) ^ "\n")
+      (* val _ = print ("Decoded UUID to: " ^ ip ^ ":" ^ (Int.toString port) ^ "\n") *)
       val socket = SocketFFI.connect ip port
-      val _ = print ("Connected to " ^ ip ^ ":" ^ (Int.toString port) ^ "\n")
+      (* val _ = print ("Connected to " ^ ip ^ ":" ^ (Int.toString port) ^ "\n") *)
       val sendReq = SocketFFI.send socket reqstr
       val resp = SocketFFI.recv socket
       val _ = SocketFFI.close socket
@@ -48,11 +48,11 @@ structure IO_Axioms = struct
                        string) ResultMonad.coq_Result) =
     (fn path => fn reqstr =>
       (let 
-        val _ = print ("Sending a request to the FS: " ^ path ^ "\n")
+        (* val _ = print ("Sending a request to the FS: " ^ path ^ "\n") *)
         val req_str = path ^ " \"" ^ (SysFFI.shellEscapeString reqstr) ^ "\""
-        val _ = print ("Request string: " ^ req_str ^ "\n")
+        (* val _ = print ("Request string: " ^ req_str ^ "\n") *)
         val resp = SysFFI.c_popen_string req_str
-        val _ = print ("Got back a response from the ASP: \n" ^ resp ^ "\n")
+        (* val _ = print ("Got back a response from the ASP: \n" ^ resp ^ "\n") *)
       in
         (* TODO: Should really do some error handling in here! *)
         ResultMonad.Coq_res resp
