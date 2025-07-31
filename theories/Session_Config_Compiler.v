@@ -1,7 +1,7 @@
 From RocqCandy Require Import All.
-From CoplandSpec Require Import Term_Defs Attestation_Session.
+From CoplandSpec Require Import Term_Defs Attestation_Session Interface.Interface.
 From CoplandManifestTools Require Import Manifest.
-From CVM Require Import IO_Utils Interface.Interface AM_Manager.
+From CVM Require Import IO_Utils AM_Manager.
 
 Definition generate_ASP_dispatcher' (am : Manifest) (ats : Attestation_Session) (aspBin : FS_Location) (par : ASP_PARAMS) (rawEv : RawEv) : Result RawEv DispatcherErrors :=
   let (aspid, args, targ_plc, targ) := par in
