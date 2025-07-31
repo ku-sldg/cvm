@@ -24,6 +24,7 @@ depends: [
   "rocq-copland-manifest-tools" { >= "0.2.4" }
   "rocq-EasyBakeCakeML" { >= "0.5.0" }
   "bake" { >= "1.4.0" }
+  "rocq-logging" { >= "0.1.2" }
   "conf-zmq" { >= "0.1" }
 ]
 

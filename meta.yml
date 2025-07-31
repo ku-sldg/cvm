@@ -47,6 +47,11 @@ dependencies:
     opam:
       name: "bake"
       version: '{ >= "1.4.0" }'
+  - description: "[RocqLogging](https://github.com/ku-sldg/rocq-logging)"
+    opam:
+      name: "rocq-logging"
+      version: '{ >= "0.1.2" }'
+      lib_name: "RocqLogging"
   - description: "[conf-zmq](https://opam.ocaml.org/packages/conf-zmq/)"
     opam:
       name: "conf-zmq"

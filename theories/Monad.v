@@ -4,10 +4,9 @@
 
   Author:  Adam Petz, ampetz@ku.edu
 *)
-From CoplandSpec Require Import Term_Defs Event_System Attestation_Session.
+From CoplandSpec Require Import Term_Defs Event_System Attestation_Session Interface.Interface.
 
-From CVM Require Export St IO_Utils Utils.
-From CVM Require Import Interface.Interface.
+From CVM Require Export St IO_Utils.
 
 (** * CVM monadic primitive operations *)
 Definition get_st : CVM cvm_st :=
