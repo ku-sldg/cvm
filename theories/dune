@@ -20,8 +20,8 @@
    build
    --stubs
    %{project_root}/../../stubs/
-   --c-libraries
-   libzmq
+   --cc-flags
+   "-static"
    --out
    cvm.cml
    ../FrontEnd.cml)))

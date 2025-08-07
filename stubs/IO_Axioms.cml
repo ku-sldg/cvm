@@ -1,4 +1,4 @@
-(* deps: ResultMonad St System_Types Term_Defs_Core ExtractionPrelude $FFI.SocketFFI $FFI.SysFFI $JSON_Axioms *)
+(* deps: ResultMonad St System_Types Term_Defs_Core ExtractionPrelude $FFI.SysFFI $JSON_Axioms *)
 
 structure IO_Axioms = struct
  (** val make_network_request :
@@ -20,25 +20,6 @@ structure IO_Axioms = struct
       in
         (ip, port')
       end
-
-  val make_network_request : (System_Types.coq_IP_Port -> string -> (string,
-                            string) ResultMonad.coq_Result) =
-    (fn ipport => fn reqstr =>
-    let 
-      val (ip, port) = decodeUUID ipport
-      (* val _ = print ("Decoded UUID to: " ^ ip ^ ":" ^ (Int.toString port) ^ "\n") *)
-      val socket = SocketFFI.connect ip port
-      (* val _ = print ("Connected to " ^ ip ^ ":" ^ (Int.toString port) ^ "\n") *)
-      val sendReq = SocketFFI.send socket reqstr
-      val resp = SocketFFI.recv socket
-      val _ = SocketFFI.close socket
-    in
-      (* TODO: Should really do some error handling in here! *)
-      ResultMonad.Coq_res resp
-    end
-    )
-   (* failwith "AXIOM TO BE REALIZED (CVM.IO_Axioms.make_network_request)" *)
-
 
  (** val make_fs_request :
      System_Types.coq_FS_Location -> string -> (string, string)

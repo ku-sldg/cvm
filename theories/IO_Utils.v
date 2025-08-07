@@ -17,8 +17,9 @@ From CVM Require Export IO_Axioms.
 
 Definition make_JSON_Network_Request (ipport : IP_Port) (js : JSON) 
     : Result JSON string :=
-  resstr <- make_network_request ipport (to_string js) ;;
-  from_string resstr.
+  (* resstr <- make_network_request ipport (to_string js) ;;
+  from_string resstr. *)
+  err "Network requests not supported in this version.".
 
 Definition fs_location_join (dir : FS_Location) (tail : FS_Location) : FS_Location :=
   dir ++ "/" ++ tail.
