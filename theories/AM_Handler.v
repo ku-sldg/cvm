@@ -1,8 +1,8 @@
 From RocqCandy Require Import All.
 From RocqJSON Require Import JSON.
-From CoplandSpec Require Import System_Types.
+From CoplandSpec Require Import System_Types Interface.Interface.
 From CoplandManifestTools Require Import Manifest.
-From CVM Require Import Impl St Interface.Interface Session_Config_Compiler AM_Manager.
+From CVM Require Import Impl St Session_Config_Compiler AM_Manager.
 
 (* Processes the request given by [reqstr] and returns a string (json response) value *)
 Definition handle_AM_request (conf : AM_Manager_Config) (reqstr : string) 
