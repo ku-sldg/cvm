@@ -113,7 +113,7 @@ Hint Unfold get_asp_dual : cvm.
 Definition bundle_asp `{DecEq nat, DecEq ASP_ID} (p:Plc) (rwev : RawEv) 
     (cur_ev : Evidence) (ps:ASP_PARAMS) : CVM Evidence :=
   let '(asp_paramsC asp_id args) := ps in
-  '(ev_arrow fwd in_sig out_sig) <- get_asp_type asp_id ;;cvm
+  '(ev_arrow fwd attrs in_sig out_sig) <- get_asp_type asp_id ;;cvm
   match out_sig with
   | (OutN n) =>
     match (dec_eq (List.length rwev) n) with
@@ -213,7 +213,7 @@ Fixpoint invoke_APPR' `{DecEq ASP_ID} (r : RawEv) (et : EvidenceT) (out_evt : Ev
     let '(asp_paramsC asp_id args ) := par in
     appr_asp_id <- get_asp_dual asp_id ;;cvm
     let dual_par := asp_paramsC appr_asp_id args in
-    '(ev_arrow fwd in_sig out_sig) <- get_asp_type asp_id ;;cvm
+    '(ev_arrow fwd attrs in_sig out_sig) <- get_asp_type asp_id ;;cvm
     match fwd with
     | REPLACE => (* Only do the dual ASP *)
       invoke_ASP (evc r out_evt) dual_par
