@@ -385,8 +385,6 @@ Proof.
   induction H; intros; simpl in *;
   try (invc H0; invc H1; eauto using et_same_asps; fail).
   - invc H0; invc H1; try congruence; eauto using et_same_asps.
-  - invc H0; invc H1; try congruence; eauto using et_same_asps.
-  - invc H0; invc H1; try congruence; eauto using et_same_asps.
   - invc H1; invc H2; try congruence; eauto using et_same_asps.
 Qed.
 Local Hint Resolve ev_subterm_path_et_same_asps : et_same_asps_db.
