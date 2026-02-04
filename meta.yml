@@ -10,7 +10,7 @@ authors:
   - name: "Will Thomas"
     email: "30wthomas@ku.edu"
 opam-file-maintainer: "30wthomas@ku.edu" # Need a strong default here or we will accidentally email a Coq developer
-opam-file-version: "0.1.1"
+opam-file-version: "0.1.2"
 
 ######################################################
 # NOTE: Optional Extra Info
@@ -120,8 +120,8 @@ license:
     identifier: CC-BY-SA-4.0
     file: LICENSE
 supported_coq_versions:
-  - text: "9.0 later"
-    opam: '{ >= "9.0~" }'
+  - text: "9.0.1"
+    opam: '{ = "9.0.1" }'
 supported_ocaml_versions:
   - text: "4.12 or later"
     opam: '{ >= "4.12~" }'
