@@ -528,10 +528,8 @@ Proof.
       let ih := Control.hyp ih in
       eapply $ih in $h2; try (eapply $h1v); 
       clear $h1
-    end);
-    try (econstructor; eauto; fail);
-    destruct s, s, s0; simpl in *; eauto;
-    econstructor.
+    end); ff;
+    try (econstructor; eauto; fail).
   - ff u, a.
     repeat (match! goal with
     | [ h1 : eval _ ?_p1 ?_e1 ?_t = res ?_e1',
@@ -541,10 +539,8 @@ Proof.
       let ih := Control.hyp ih in
       eapply $ih in $h2; try (eapply $h1v); 
       clear $h1
-    end);
-    try (econstructor; eauto; fail);
-    destruct s, s, s0; simpl in *; eauto;
-    econstructor.
+    end); ff;
+    try (econstructor; eauto; fail).
 Qed.
 Local Hint Resolve et_same_asps_eval_same_asps : et_same_asps_db.
 
@@ -607,7 +603,7 @@ Proof.
   induction t; simpl in *; intuition; ff u, a;
   eauto with et_same_asps_db.
   - eapply et_same_asps_impl_appr_events_size_same; eauto.
-  - destruct s, s, s0; simpl in *; ff u, a;
+  - simpl in *; ff u, a;
     repeat (match! goal with
     | [ h1 : events_size _ ?_p1 ?_e1 ?_t1 = _,
         h2 : events_size _ ?_p2 ?_e2 ?_t1 = _,
@@ -619,7 +615,7 @@ Proof.
       try (eapply et_same_asps_refl; eauto; fail);
       clear $h2; ff
     end).
-  - destruct s, s, s0; simpl in *; ff u, a;
+  - simpl in *; ff u, a;
     repeat (match! goal with
     | [ h1 : events_size _ ?_p1 ?_e1 ?_t1 = _,
         h2 : events_size _ ?_p2 ?_e2 ?_t1 = _,
@@ -733,12 +729,10 @@ Proof.
       eapply $ih2 in $h2; ff
     end).
   - ff u, a; cvm_monad_unfold; ff;
-    destruct s, s, s0; simpl in *;
     eapply IHt1 in Heqp as ?; ff;
     eapply IHt2 in Heqp0 as ?; simpl in *;
     ff; find_higher_order_rewrite; eauto.
   - ff u, a; cvm_monad_unfold; ff;
-    destruct s, s, s0; ff u, a;
     find_eapply_lem_hyp parallel_vm_thread_axiom; eauto; ff u, a;
     try (unfold mt_evc in *; ff);
     find_eapply_lem_hyp IHt1; ff;
@@ -774,39 +768,16 @@ Proof.
     destruct e; simpl in *; ff.
     eapply IHt2 in H0 as ? > [ | | eapply Heqr1]; ff l.
   - cvm_monad_unfold; ff u, a.
-    eapply IHt1 in Heqp > [ | eauto | destruct s, s, s0; ff ]; ff.
-    eapply IHt2 in Heqp0 > [ | eauto | destruct s, s, s0; ff ]; ff.
+    eapply IHt1 in Heqp > [ | eauto | ff ]; ff.
+    eapply IHt2 in Heqp0 > [ | eauto | ff ]; ff.
     lia.
   - ff u, a; cvm_monad_unfold; ff;
     repeat find_rewrite;
     eapply IHt1 in Heqp; try (eapply Heqr);
     simpl in *; eauto; ff;
-    destruct s, s, s0; simpl in *; ff; try lia;
     repeat find_rewrite; repeat find_injection; try lia;
     unfold mt_evc in *; ff l.
 Qed.
-
-Lemma wf_Evidence_split_l : forall G e s,
-  wf_Evidence G e ->
-  wf_Evidence G (splitEv_l s e).
-Proof.
-  intros; invc H;
-  unfold splitEv_l; ff;
-  econstructor; simpl in *; auto.
-  Unshelve. eapply 0.
-Qed.
-Local Hint Resolve wf_Evidence_split_l : wf_Evidence.
-
-Lemma wf_Evidence_split_r : forall G e s,
-  wf_Evidence G e ->
-  wf_Evidence G (splitEv_r s e).
-Proof.
-  intros; invc H;
-  unfold splitEv_r; ff;
-  econstructor; simpl in *; auto.
-  Unshelve. eapply 0.
-Qed.
-Local Hint Resolve wf_Evidence_split_r : wf_Evidence.
 
 Lemma wf_Evidence_split : forall G r1 r2 et1 et2,
   wf_Evidence G (evc r1 et1) ->
@@ -1010,14 +981,6 @@ Proof.
   - ff; simpl in *.
     find_eapply_lem_hyp parallel_vm_thread_axiom; ff.
     eapply IHt1 in Heqp; ff; eauto with wf_Evidence.
-    eapply IHt2 in H0; ff; eauto with wf_Evidence.
-    destruct s, s, s0; ff; 
-    unfold mt_evc in *; ff;
-    eauto with wf_Evidence;
-    econstructor; ff l.
-    Unshelve.
-    eapply 0.
-    eapply 0.
 Qed.
 
 Theorem invoke_APPR_respects_events : forall G et r eo st sc st' e' i m evs,
@@ -1193,22 +1156,19 @@ Proof.
     try (destruct s, s, s0; ff; fail);
     eapply cvm_spans in Heqp as ?; eauto; ff;
     try (repeat find_rewrite; simpl in *;
-      destruct s, s, s0; simpl in *; 
       eapply events_range; eauto; ff; fail); 
     ff.
-    eapply IHt2 in Heqp0 as ? > [ | | destruct s, s, s0; ff | | | ]; ff.
+    eapply IHt2 in Heqp0 as ? > [ | | | | | ]; ff.
     repeat (erewrite <- app_assoc); ff;
     find_eapply_lem_hyp cvm_spans; ff;
-    destruct s, s, s0; ff;
     eapply events_range; eauto; ff a.
   - ff a; invc H0; ff a;
     cvm_monad_unfold; ff a;
     simpl in *; repeat find_rewrite;
     repeat find_injection; ff.
-    eapply IHt1 in Heqp as ?; try (destruct s, s, s0; ff; fail); eauto; ff; try lia.
+    eapply IHt1 in Heqp as ?; eauto; ff; try lia.
     eapply cvm_spans in Heqp as ?; eauto; ff;
     try (repeat find_rewrite; simpl in *;
-      destruct s, s, s0; simpl in *; 
       eapply events_range; eauto; ff; fail);
     repeat find_rewrite; try lia.
     repeat (rewrite <- app_assoc); simpl in *; ff.
@@ -1216,12 +1176,10 @@ Proof.
     assert (st_evid st + 2 + List.length evs1 = st_evid st + 1 + 1 + List.length evs1) by lia.
     ff.
     erewrite events_events_fix_eq in *; ff.
-    assert (n = List.length evs2). {
-      repeat (find_eapply_lem_hyp events_fix_range); eauto; ff;
-      destruct s, s, s0; ff; unfold mt_evc in *; simpl in *; ff.
+    assert (n = List.length l). {
+      repeat (find_eapply_lem_hyp events_fix_range); eauto; ff.
     }
     ff.
-    destruct s, s, s0; ff; unfold mt_evc in *; simpl in *; ff.
 Qed.
 
 Corollary cvm_trace_respects_events_default : forall G,
