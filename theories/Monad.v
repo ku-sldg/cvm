@@ -113,9 +113,9 @@ Hint Unfold get_asp_dual : cvm.
 Definition bundle_asp `{DecEq nat, DecEq ASP_ID} (p:Plc) (rwev : RawEv) 
     (cur_ev : Evidence) (ps:ASP_PARAMS) : CVM Evidence :=
   let '(asp_paramsC asp_id args) := ps in
-  '(ev_arrow fwd attrs in_sig) <- get_asp_type asp_id ;;cvm
+  '(ev_arrow fwd attrs) <- get_asp_type asp_id ;;cvm
   match fwd with
-  | EXTEND n =>
+  | EXTEND (exist _ n nlt) _ =>
     match (dec_eq (List.length rwev) n) with
     | left _ => 
 (* The semantics for an "EXTEND" asp are it APPENDS all incoming evidence to the
@@ -127,7 +127,7 @@ current CVM evidence bundle *)
       (* we are not the right size, so we fail *)
       CVM_fail (dispatch_error (Runtime errStr_raw_EvidenceT_too_long))
     end
-  | REPLACE n =>
+  | REPLACE (exist _ n nlt) =>
 (* The semantics for a "REPLACE" asp are it CONSUMES all incoming evidence,
 then returns a new collection of evidence that will REPLACE the CVMs current 
 Evidence *)
@@ -141,7 +141,7 @@ Evidence *)
 attestation and bundling side of the CVM. Wraps main distinction lies in the
 fact that its is a GUARANTEE, that the dual appraisal ASP is actually an
 inverse, thus allowing WRAPPED evidence to be recovered via appraisal *)
-  | WRAP n =>
+  | WRAP (exist _ n nlt) =>
     match (dec_eq (List.length rwev) n) with
     | left _ => CVM_ret (evc rwev (asp_evt p ps (get_et cur_ev))) 
     | right _ => 
@@ -162,7 +162,7 @@ inverse, thus allowing WRAPPED evidence to be recovered via appraisal *)
       end
       (* match r with
       | asp_evt p' (asp_paramsC wrap_id _ _ _) et' =>
-        '(ev_arrow fwd _ _) <- get_asp_type wrap_id ;;cvm
+        '(ev_arrow fwd _) <- get_asp_type wrap_id ;;cvm
         match fwd with
         | WRAP =>
           (* we are an UNWRAP or a WRAP, so new size is the sizer of et' *)
@@ -215,7 +215,7 @@ Fixpoint invoke_APPR' `{DecEq ASP_ID} (r : RawEv) (et : EvidenceT) (out_evt : Ev
     let '(asp_paramsC asp_id args ) := par in
     appr_asp_id <- get_asp_dual asp_id ;;cvm
     let dual_par := asp_paramsC appr_asp_id args in
-    '(ev_arrow fwd attrs in_sig) <- get_asp_type asp_id ;;cvm
+    '(ev_arrow fwd attrs) <- get_asp_type asp_id ;;cvm
     match fwd with
     | REPLACE n => (* Only do the dual ASP *)
       invoke_ASP (evc r out_evt) dual_par
@@ -241,7 +241,7 @@ Fixpoint invoke_APPR' `{DecEq ASP_ID} (r : RawEv) (et : EvidenceT) (out_evt : Ev
           apply_to_asp_under_wrap G asp_id (fun e => invoke_APPR' r e out_evt) et'
         ) ;;
         e *)
-    | EXTEND n =>
+    | EXTEND (exist _ n nlt) _ =>
       (* first we split, left for the appr of extended part, right for rest *)
       split_ev ;;cvm
       '(_, r_ev) <- (hoist_result (peel_n_rawev n r)) ;;cvm

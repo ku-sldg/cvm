@@ -648,10 +648,13 @@ Proof.
 Qed.
 
 Definition well_formed_context (G : GlobalContext) : Prop :=
-  (asp_types G) ![ sig_aspid ] = Some (ev_arrow (EXTEND 1) [] InAll) /\
-  (asp_types G) ![ hsh_aspid ] = Some (ev_arrow (REPLACE 1) [] InAll) /\
-  (asp_types G) ![ enc_aspid ] = Some (ev_arrow (WRAP 1) [] InAll) /\
-  (asp_types G) ![ check_nonce_aspid ] = Some (ev_arrow (EXTEND 1) [] InAll).
+  (asp_types G) ![ sig_aspid ] 
+    = Some (ev_arrow (EXTEND (exist _ 1 Nat.lt_0_1) InAll) []) /\
+  (asp_types G) ![ hsh_aspid ] 
+    = Some (ev_arrow (REPLACE (exist _ 1 Nat.lt_0_1)) []) /\
+  (asp_types G) ![ enc_aspid ] = Some (ev_arrow (WRAP (exist _ 1 Nat.lt_0_1)) []) /\
+  (asp_types G) ![ check_nonce_aspid ] 
+    = Some (ev_arrow (EXTEND (exist _ 1 Nat.lt_0_1) InAll) []).
 
 Lemma invoke_ASP_evidence : forall e par st sc e' st',
   invoke_ASP e par sc st = (res e', st') ->
@@ -832,8 +835,8 @@ Qed.
 Lemma wf_Evidence_asp_unfold_more : forall G r p e n a a1,
   wf_Evidence G (evc r (asp_evt p (asp_paramsC a a1) e)) ->
   et_size G e = res n ->
-  forall sig n' attrs,
-  (asp_types G) ![ a ] = Some (ev_arrow (EXTEND n') attrs sig) ->
+  forall sig n' n'lt attrs,
+  (asp_types G) ![ a ] = Some (ev_arrow (EXTEND (exist _ n' n'lt) sig) attrs) ->
   et_size G (asp_evt p (asp_paramsC a a1) e) = res (n' + n).
 Proof.
   intros.
@@ -853,8 +856,8 @@ Qed.
 
 Lemma wf_Evidence_asp_unpack : forall G r p e a0 a1,
   wf_Evidence G (evc r (asp_evt p (asp_paramsC a0 a1) e)) ->
-  forall in_sig n n' attrs,
-  (asp_types G) ![ a0 ] = Some (ev_arrow (EXTEND n) attrs in_sig) ->
+  forall in_sig n n' nlt attrs,
+  (asp_types G) ![ a0 ] = Some (ev_arrow (EXTEND (exist _ n nlt) in_sig) attrs) ->
   et_size G e = res n' ->
   List.length r = n + n'.
 Proof.
