@@ -357,8 +357,8 @@ Hint Unfold get_cvm_policy : cvm.
 
 (* Remote communication primitives *)
 
-Definition do_remote (sc : Session_Config) (pTo: Plc) (e : Evidence) (t:Term) 
-    : Result Evidence CVM_Error := 
+Definition do_remote (sc : Session_Config) (pTo: Plc) (e : Evidence) (tm:Term) 
+    : Result Evidence CVM_Error :=
   (* There is assuredly a better way to do it than this *)
   let '(mkAtt_Sess my_plc plc_map pk_map G) := (session_config_decompiler sc) in
   (* We need  to update the Att Session to tell the next plc how
@@ -367,7 +367,7 @@ Definition do_remote (sc : Session_Config) (pTo: Plc) (e : Evidence) (t:Term)
   let new_att_sess := (mkAtt_Sess pTo plc_map pk_map G) in
   match (plc_map ![ pTo ]) with 
   | Some IP_Port => 
-      let remote_req := (mkPRReq new_att_sess my_plc e t) in
+      let remote_req := (mkPRReq new_att_sess my_plc e tm) in
       let js_req := to_JSON remote_req in
       let resp_res := make_JSON_Network_Request IP_Port js_req in
       match resp_res with
@@ -385,7 +385,7 @@ Definition do_remote (sc : Session_Config) (pTo: Plc) (e : Evidence) (t:Term)
   | None => err (dispatch_error Unavailable)
   end.
 (* We make this Opaque because we want to hide its implementation details: we axiomatically manage remote calls instead *)
-Opaque do_remote.
+Global Opaque do_remote.
 
 Definition doRemote_session' (pTo:Plc) (e:Evidence) (t:Term) 
     : CVM Evidence := 
