@@ -266,16 +266,6 @@ void ffiexec_process_io(const char *commandIn, const long clen, char *a, const l
     return;
   }
 
-  // Verify the executable exists and is accessible
-  if (access(process_path, X_OK) != 0)
-  {
-    DEBUG_PRINTF("ffiexec_process_io: Process not found or not executable: %s (%s)\n",
-                 process_path, strerror(errno));
-    free(process_path);
-    a[RESPONSE_CODE_START] = PATH_ERROR;
-    return;
-  }
-
   // ---------- Create pipes ----------
   int stdin_pipe[2];  // Parent writes to [1], child reads from [0]
   int stdout_pipe[2]; // Child writes to [1], parent reads from [0]
