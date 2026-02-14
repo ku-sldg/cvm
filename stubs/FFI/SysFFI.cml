@@ -5,29 +5,35 @@ structure SysFFI = struct
 
   local 
       fun ffi_system x y = #(system) x y
-      fun ffi_popen_string x y = #(popen_string) x y
+      fun ffi_exec_process_io x y = #(exec_process_io) x y
   in
-    fun escFn c =
-        case Char.ord c of
-          8  => "\\b"
-        |  9  => "\\t"
-        | 10  => "\\n"
-        | 12  => "\\f"
-        | 13  => "\\r"
-        | 34  => "\\\""
-        | _   => String.str c
-
-    fun shellEscapeString str =
-        String.concat (List.map escFn (String.explode str))
-
-    (* () -> string *)
-    fun c_popen_string (com) = 
-      let val command_bs = BString.fromString com
-          val resp_bs = FFI.buffered_call ffi_popen_string command_bs
+    (**
+     * c_exec_process_io: Spawn a process and communicate via stdin/stdout.
+     *
+     * The process at `process` is executed directly via fork/exec.
+     * `arg_str` is written to the process's stdin, then stdin is closed
+     * (sending EOF). The process's stdout is read and returned.
+     *
+     * Input encoding sent to FFI:
+     *   [ ProcessPathLength : 4 bytes (big-endian) ;
+     *     ProcessPath       : ProcessPathLength bytes ;
+     *     ArgString         : remaining bytes ]
+     *
+     * @param process  Absolute path to the executable
+     * @param arg_str  String to write to the process's stdin
+     * @return         The process's stdout output as a string
+     *)
+    fun c_exec_process_io (process : string) (arg_str : string) = 
+      let val process_bs = BString.fromString process
+          val process_len_bs = BString.int_to_qword (BString.length process_bs)
+          val arg_bs = BString.fromString arg_str
+          val payload = BString.concat (BString.concat process_len_bs process_bs) arg_bs
+          val resp_bs = FFI.buffered_call ffi_exec_process_io payload
       in 
         BString.toString resp_bs
       end
-      handle _ => raise (Exception "Unknown Error thrown from c_popen_string, likely check that the word8 array is right length that is expected and not accessing something outside of its bounds")
+      handle Exception e => raise (Exception e)
+           | _ => raise (Exception "Unknown Error thrown from c_exec_process_io, likely check that the word8 array is right length that is expected and not accessing something outside of its bounds")
   end
 
 end
