@@ -15,7 +15,7 @@
 #define PATH_ERROR 0xe1
 #define FORK_ERROR 0xe2
 #define PIPE_ERROR 0xe3
-#define EXEC_ERROR 0xe4
+
 #define STDIN_WRITE_ERROR 0xe5
 #define FAILED_TO_READ_FILE 0xed
 #define FAILED_TO_REALLOC_BUFFER 0xee
@@ -27,7 +27,7 @@
 #define FILE_CLOSE_ERROR 0xff
 
 /**
- * Function to read an entire file descriptor until EOF via buffered I/O.
+ * Function to read from a FILE* stream until EOF via buffered I/O.
  * Returns:
  *
  * 0x00 = Success
@@ -334,7 +334,9 @@ void ffiexec_process_io(const char *commandIn, const long clen, char *a, const l
     // Execute the process (no shell involved — direct exec)
     execl(process_path, process_path, (char *)NULL);
 
-    // If execl returns, it failed
+    // If execl returns, it failed.
+    // Note: The error message is written to the child's stderr, which is not
+    // redirected or captured and therefore will appear on the parent's stderr.
     fprintf(stderr, "ffiexec_process_io: execl failed for '%s': %s\n",
             process_path, strerror(errno));
     _exit(127);
