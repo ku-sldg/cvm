@@ -14,6 +14,8 @@ Follow the instructions on https://github.com/coq-community/templates to regener
 
 The Copland Virtual Machine (CVM) is a Rocq library that formalizes a virtual machine for the Copland Domain Specific Language for layered remote attestation.
 
+*NOTE*: The CVM expects to communicate with ASP's via a fork/exec style where the ASP is launched, reads input from stdin, and writes output to stdout. Utilizing the [`rust-am-lib`](https://github.com/ku-sldg/rust-am-lib) version 0.3.0 and greater should be sufficient to meet these requirements. The CVM does not currently support any other style of communication with ASP's, but support for additional styles may be added in the future.
+
 ## Meta
 
 - Author(s):
