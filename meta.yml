@@ -10,7 +10,7 @@ authors:
   - name: "Will Thomas"
     email: "30wthomas@ku.edu"
 opam-file-maintainer: "30wthomas@ku.edu" # Need a strong default here or we will accidentally email a Coq developer
-opam-file-version: "0.2.0"
+opam-file-version: "0.6.0"
 
 ######################################################
 # NOTE: Optional Extra Info
@@ -26,17 +26,17 @@ dependencies:
   - description: "[RocqCandy](https://github.com/ku-sldg/rocq-candy)"
     opam:
       name: "rocq-candy"
-      version: '{ >= "0.2.1" }'
+      version: '{ >= "0.6.0" }'
       lib_name: "RocqCandy"
   - description: "[Copland Spec](https://github.com/ku-sldg/copland-spec)"
     opam:
       name: "rocq-copland-spec"
-      version: '{ >= "0.1.1" }'
+      version: '{ >= "0.6.0" }'
       lib_name: "CoplandSpec"
   - description: "[CoplandManifestTools](https://github.com/ku-sldg/copland-manifest-tools)"
     opam:
       name: "rocq-copland-manifest-tools"
-      version: '{ >= "0.2.4" }'
+      version: '{ >= "0.6.0" }'
       lib_name: "CoplandManifestTools"
   - description: "[EasyBakeCakeML](https://github.com/Durbatuluk1701/EasyBakeCakeML)"
     opam:
