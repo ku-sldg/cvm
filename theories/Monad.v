@@ -112,40 +112,43 @@ Hint Unfold get_asp_dual : cvm.
 
 Definition bundle_asp `{DecEq nat, DecEq ASP_ID} (p:Plc) (rwev : RawEv) 
     (cur_ev : Evidence) (ps:ASP_PARAMS) : CVM Evidence :=
-  let '(asp_paramsC asp_id args targ_plc targ) := ps in
-  '(ev_arrow fwd in_sig out_sig) <- get_asp_type asp_id ;;cvm
-  match out_sig with
-  | (OutN n) =>
+  let '(asp_paramsC asp_id args) := ps in
+  '(ev_arrow fwd attrs) <- get_asp_type asp_id ;;cvm
+  match fwd with
+  | EXTEND (exist _ n nlt) _ =>
     match (dec_eq (List.length rwev) n) with
     | left _ => 
-      match fwd with
-(* The semantics for a "REPLACE" asp are it CONSUMES all incoming evidence,
-then returns a new collection of evidence that will REPLACE the CVMs current 
-Evidence *)
-      | REPLACE => CVM_ret (evc rwev (asp_evt p ps (get_et cur_ev)))
-(* The semantics for a "WRAP" asp are the exact same as "REPLACE" for the 
-attestation and bundling side of the CVM. Wraps main distinction lies in the
-fact that its is a GUARANTEE, that the dual appraisal ASP is actually an
-inverse, thus allowing WRAPPED evidence to be recovered via appraisal *)
-      | WRAP => CVM_ret (evc rwev (asp_evt p ps (get_et cur_ev)))
-      | UNWRAP => CVM_fail (dispatch_error (Runtime err_str_unwrap_must_have_outwrap))
 (* The semantics for an "EXTEND" asp are it APPENDS all incoming evidence to the
 current CVM evidence bundle *)
-      | EXTEND =>
-        match cur_ev with
-        | evc bits et => CVM_ret (evc (rwev ++ bits) (asp_evt p ps et))
-        end
+      match cur_ev with
+      | evc bits et => CVM_ret (evc (rwev ++ bits) (asp_evt p ps et))
       end
     | right _ => 
       (* we are not the right size, so we fail *)
       CVM_fail (dispatch_error (Runtime errStr_raw_EvidenceT_too_long))
     end
-  | OutUnwrap =>
-    match fwd with
-    | WRAP => CVM_fail (dispatch_error (Runtime err_str_only_unwrap_can_be_outwrap))
-    | REPLACE => CVM_fail (dispatch_error (Runtime err_str_only_unwrap_can_be_outwrap))
-    | EXTEND => CVM_fail (dispatch_error (Runtime err_str_only_unwrap_can_be_outwrap))
-    | UNWRAP => 
+  | REPLACE (exist _ n nlt) =>
+(* The semantics for a "REPLACE" asp are it CONSUMES all incoming evidence,
+then returns a new collection of evidence that will REPLACE the CVMs current 
+Evidence *)
+    match (dec_eq (List.length rwev) n) with
+    | left _ => CVM_ret (evc rwev (asp_evt p ps (get_et cur_ev)))
+    | right _ => 
+      (* we are not the right size, so we fail *)
+      CVM_fail (dispatch_error (Runtime errStr_raw_EvidenceT_too_long))
+    end
+(* The semantics for a "WRAP" asp are the exact same as "REPLACE" for the 
+attestation and bundling side of the CVM. Wraps main distinction lies in the
+fact that its is a GUARANTEE, that the dual appraisal ASP is actually an
+inverse, thus allowing WRAPPED evidence to be recovered via appraisal *)
+  | WRAP (exist _ n nlt) =>
+    match (dec_eq (List.length rwev) n) with
+    | left _ => CVM_ret (evc rwev (asp_evt p ps (get_et cur_ev))) 
+    | right _ => 
+      (* we are not the right size, so we fail *)
+      CVM_fail (dispatch_error (Runtime errStr_raw_EvidenceT_too_long))
+    end
+  | UNWRAP =>
       sc <- get_config ;;cvm
       let G := (session_context sc) in
       let '(evc bits et) := cur_ev in
@@ -159,7 +162,7 @@ current CVM evidence bundle *)
       end
       (* match r with
       | asp_evt p' (asp_paramsC wrap_id _ _ _) et' =>
-        '(ev_arrow fwd _ _) <- get_asp_type wrap_id ;;cvm
+        '(ev_arrow fwd _) <- get_asp_type wrap_id ;;cvm
         match fwd with
         | WRAP =>
           (* we are an UNWRAP or a WRAP, so new size is the sizer of et' *)
@@ -175,7 +178,6 @@ current CVM evidence bundle *)
         end
       | _ => fail (dispatch_error (Runtime err_str_unwrap_only_wrap))
       end *)
-    end
   end.
 Hint Unfold bundle_asp : cvm.
 
@@ -210,14 +212,14 @@ Fixpoint invoke_APPR' `{DecEq ASP_ID} (r : RawEv) (et : EvidenceT) (out_evt : Ev
   | mt_evt => CVM_ret mt_evc 
   | nonce_evt n' => invoke_ASP (evc r out_evt) check_nonce_params
   | asp_evt p' par et' =>
-    let '(asp_paramsC asp_id args targ_plc targ) := par in
+    let '(asp_paramsC asp_id args ) := par in
     appr_asp_id <- get_asp_dual asp_id ;;cvm
-    let dual_par := asp_paramsC appr_asp_id args targ_plc targ in
-    '(ev_arrow fwd in_sig out_sig) <- get_asp_type asp_id ;;cvm
+    let dual_par := asp_paramsC appr_asp_id args in
+    '(ev_arrow fwd attrs) <- get_asp_type asp_id ;;cvm
     match fwd with
-    | REPLACE => (* Only do the dual ASP *)
+    | REPLACE n => (* Only do the dual ASP *)
       invoke_ASP (evc r out_evt) dual_par
-    | WRAP =>
+    | WRAP n =>
       (* first do the dual ASP to unwrap *)
       (* NOTE: Do we need to be checking that appr_asp_id is an UNWRAP here? *)
       '(evc r'' et'') <- invoke_ASP (evc r out_evt) dual_par ;;cvm
@@ -233,35 +235,26 @@ Fixpoint invoke_APPR' `{DecEq ASP_ID} (r : RawEv) (et : EvidenceT) (out_evt : Ev
     | UNWRAP =>
       (* to appraise an UNWRAP is to appraise whatever is below 
       the UNWRAP and WRAP *)
-      match out_sig with
-      | OutN _ => CVM_fail (dispatch_error (Runtime err_str_unwrap_must_have_outwrap)) 
-      | OutUnwrap =>
-        e <- hoist_result (apply_to_evidence_below G (fun e => invoke_APPR' r e out_evt) [Trail_UNWRAP asp_id] et') ;;cvm
-        e 
+      e <- hoist_result (apply_to_evidence_below G (fun e => invoke_APPR' r e out_evt) [Trail_UNWRAP asp_id] et') ;;cvm
+      e 
         (* e <- hoist_result (
           apply_to_asp_under_wrap G asp_id (fun e => invoke_APPR' r e out_evt) et'
         ) ;;
         e *)
-      end
+    | EXTEND (exist _ n nlt) _ =>
+      (* first we split, left for the appr of extended part, right for rest *)
+      split_ev ;;cvm
+      '(_, r_ev) <- (hoist_result (peel_n_rawev n r)) ;;cvm
 
-    | EXTEND =>
-      match out_sig with
-      | OutUnwrap => CVM_fail (dispatch_error (Runtime err_str_extend_must_have_outn))
-      | (OutN n) =>
-        (* first we split, left for the appr of extended part, right for rest *)
-        split_ev ;;cvm
-        '(_, r_ev) <- (hoist_result (peel_n_rawev n r)) ;;cvm
+      (* on left we do the dual of EXTEND *)
+      ev1 <- invoke_ASP (evc r out_evt) dual_par ;;cvm
 
-        (* on left we do the dual of EXTEND *)
-        ev1 <- invoke_ASP (evc r out_evt) dual_par ;;cvm
-
-        (* now on right, we work only on the remaining evidence *)
-        (* our new evidence is e' *)
-        (* now we do the recursive call *)
-        ev2 <- invoke_APPR' r_ev et' et' ;;cvm
-        (* now join *)
-        join_seq ev1 ev2 
-      end
+      (* now on right, we work only on the remaining evidence *)
+      (* our new evidence is e' *)
+      (* now we do the recursive call *)
+      ev2 <- invoke_APPR' r_ev et' et' ;;cvm
+      (* now join *)
+      join_seq ev1 ev2 
       (* ev' <- invoke_ASP (asp_paramsC appr_asp_id args targ_plc targ) ;;cvm
       put_ev ev' *)
     end
@@ -364,8 +357,8 @@ Hint Unfold get_cvm_policy : cvm.
 
 (* Remote communication primitives *)
 
-Definition do_remote (sc : Session_Config) (pTo: Plc) (e : Evidence) (t:Term) 
-    : Result Evidence CVM_Error := 
+Definition do_remote (sc : Session_Config) (pTo: Plc) (e : Evidence) (tm:Term) 
+    : Result Evidence CVM_Error :=
   (* There is assuredly a better way to do it than this *)
   let '(mkAtt_Sess my_plc plc_map pk_map G) := (session_config_decompiler sc) in
   (* We need  to update the Att Session to tell the next plc how
@@ -374,7 +367,7 @@ Definition do_remote (sc : Session_Config) (pTo: Plc) (e : Evidence) (t:Term)
   let new_att_sess := (mkAtt_Sess pTo plc_map pk_map G) in
   match (plc_map ![ pTo ]) with 
   | Some IP_Port => 
-      let remote_req := (mkPRReq new_att_sess my_plc e t) in
+      let remote_req := (mkPRReq new_att_sess my_plc e tm) in
       let js_req := to_JSON remote_req in
       let resp_res := make_JSON_Network_Request IP_Port js_req in
       match resp_res with
@@ -392,7 +385,7 @@ Definition do_remote (sc : Session_Config) (pTo: Plc) (e : Evidence) (t:Term)
   | None => err (dispatch_error Unavailable)
   end.
 (* We make this Opaque because we want to hide its implementation details: we axiomatically manage remote calls instead *)
-Opaque do_remote.
+Global Opaque do_remote.
 
 Definition doRemote_session' (pTo:Plc) (e:Evidence) (t:Term) 
     : CVM Evidence := 
