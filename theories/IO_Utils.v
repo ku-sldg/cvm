@@ -27,5 +27,8 @@ Definition make_JSON_FS_Location_Request (dir : FS_Location) (aspid : FS_Locatio
   resstr <- make_fs_request (fs_location_join dir aspid) (to_string js) ;;
   from_string resstr.
 
-Definition do_start_par_thread (loc:Loc) (e: Evidence) (t: Term) : CVM unit :=
-  CVM_ret tt.
+Definition do_start_par_thread (loc:Loc) (p:Plc) (e: Evidence) (t: Term) : CVM unit :=
+  match start_par_subprocess loc p e t with
+  | res tt => CVM_ret tt
+  | err s  => CVM_fail s
+  end.

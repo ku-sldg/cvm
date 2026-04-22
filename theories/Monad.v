@@ -425,13 +425,13 @@ Definition start_par_thread (e:Evidence) (t: Term) : CVM nat :=
   p <- get_pl ;;cvm
   i <- inc_id ;;cvm
   (* The loc always = the event id for the thread_start event *)
-  do_start_par_thread i e t ;;cvm
+  do_start_par_thread i p e t ;;cvm
   add_trace [cvm_thread_start i i p (get_et e) t] ;;cvm
   CVM_ret i.
 Hint Unfold start_par_thread : cvm.
 
 Definition do_wait_par_thread (loc:Loc) (p:Plc) (e:Evidence) (t: Term) : CVM Evidence :=
-  match (parallel_vm_thread loc p e t) with
+  match (collect_par_subprocess loc p e t) with
   | res e' => CVM_ret e'
   | err s => CVM_fail s
   end.

@@ -459,3 +459,238 @@ void ffiexec_process_io(const char *commandIn, const long clen, char *a, const l
   a[RESPONSE_CODE_START] = SUCCESS;
   DEBUG_PRINTF("ffiexec_process_io: Function completed successfully\n");
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * ffispawn_par_process
+ *
+ * Non-blocking variant of ffiexec_process_io.  Forks the child, writes
+ * arg_str to its stdin (closing the write end so the child sees EOF), but
+ * does NOT call waitpid.  Returns the child's stdout read-fd and PID so the
+ * caller can retrieve the output later via fficollect_par_process.
+ *
+ * Input encoding  (same as ffiexec_process_io):
+ *   [ ProcessPathLength : 4 bytes (big-endian) ;
+ *     ProcessPath       : ProcessPathLength bytes ;
+ *     ArgString         : remaining bytes ]
+ *
+ * Output format (fixed 9 bytes):
+ *   [ SuccessCode   : 1 byte  ;
+ *     StdoutReadFd  : 4 bytes (big-endian) ;
+ *     ChildPid      : 4 bytes (big-endian) ]
+ *
+ * Return codes:  same as ffiexec_process_io
+ * ────────────────────────────────────────────────────────────────────────── */
+void ffispawn_par_process(const char *commandIn, const long clen, char *a, const long alen)
+{
+  /* Output is a fixed 9-byte header — no buffer manager needed. */
+  const int OUT_TOTAL  = 9;
+  const int FD_OFFSET  = 1;
+  const int PID_OFFSET = 5;
+
+  if (commandIn == NULL || a == NULL || alen < OUT_TOTAL || clen <= 0)
+  {
+    if (a != NULL && alen >= 1) a[0] = FILE_READ_ERROR;
+    return;
+  }
+  memset(a, 0, (size_t)alen);
+
+  /* ── Decode input ── */
+  if ((size_t)clen < 4)
+  {
+    a[0] = INPUT_DECODE_ERROR;
+    return;
+  }
+  int process_path_len = qword_to_int((unsigned char *)commandIn);
+  if (process_path_len <= 0)
+  {
+    a[0] = INPUT_DECODE_ERROR;
+    return;
+  }
+  size_t path_end = 4 + (size_t)process_path_len;
+  if (path_end > (size_t)clen)
+  {
+    a[0] = INPUT_DECODE_ERROR;
+    return;
+  }
+  char *process_path = malloc((size_t)process_path_len + 1);
+  if (!process_path) { a[0] = FAILED_TO_ALLOCATE_BUFFER; return; }
+  memcpy(process_path, commandIn + 4, (size_t)process_path_len);
+  process_path[process_path_len] = '\0';
+
+  const char *arg_str     = commandIn + path_end;
+  size_t      arg_str_len = (size_t)clen - path_end;
+
+  if (process_path[0] != '/' || strstr(process_path, "..") != NULL)
+  {
+    free(process_path);
+    a[0] = PATH_ERROR;
+    return;
+  }
+
+  /* ── Create pipes ── */
+  int stdin_pipe[2], stdout_pipe[2];
+  if (pipe(stdin_pipe) != 0)
+  {
+    free(process_path);
+    a[0] = PIPE_ERROR;
+    return;
+  }
+  if (pipe(stdout_pipe) != 0)
+  {
+    safe_close(stdin_pipe[0]); safe_close(stdin_pipe[1]);
+    free(process_path);
+    a[0] = PIPE_ERROR;
+    return;
+  }
+
+  /* ── Fork ── */
+  pid_t pid = fork();
+  if (pid < 0)
+  {
+    safe_close(stdin_pipe[0]); safe_close(stdin_pipe[1]);
+    safe_close(stdout_pipe[0]); safe_close(stdout_pipe[1]);
+    free(process_path);
+    a[0] = FORK_ERROR;
+    return;
+  }
+
+  if (pid == 0)
+  {
+    /* ── Child ── */
+    close(stdin_pipe[1]);
+    if (dup2(stdin_pipe[0], STDIN_FILENO) < 0) _exit(127);
+    close(stdin_pipe[0]);
+
+    close(stdout_pipe[0]);
+    if (dup2(stdout_pipe[1], STDOUT_FILENO) < 0) _exit(127);
+    close(stdout_pipe[1]);
+
+    execl(process_path, process_path, (char *)NULL);
+    fprintf(stderr, "ffispawn_par_process: execl failed for '%s': %s\n",
+            process_path, strerror(errno));
+    _exit(127);
+  }
+
+  /* ── Parent ── */
+  safe_close(stdin_pipe[0]);
+  safe_close(stdout_pipe[1]);
+  free(process_path);
+
+  /* Write arg_str to child's stdin and close (sends EOF). */
+  if (arg_str_len > 0)
+  {
+    if (write_all(stdin_pipe[1], arg_str, arg_str_len) != 0)
+    {
+      safe_close(stdin_pipe[1]);
+      safe_close(stdout_pipe[0]);
+      waitpid(pid, NULL, 0);
+      a[0] = STDIN_WRITE_ERROR;
+      return;
+    }
+  }
+  safe_close(stdin_pipe[1]); /* EOF → child can finish reading stdin */
+
+  /* Return the stdout read-fd and PID — do NOT waitpid here. */
+  a[0] = SUCCESS;
+  int_to_qword((int)stdout_pipe[0], (unsigned char *)&a[FD_OFFSET]);
+  int_to_qword((int)pid,            (unsigned char *)&a[PID_OFFSET]);
+  DEBUG_PRINTF("ffispawn_par_process: spawned pid=%d stdout_fd=%d\n", pid, stdout_pipe[0]);
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * fficollect_par_process
+ *
+ * Blocks until the child whose stdout read-fd and PID were returned by
+ * ffispawn_par_process has exited, reads its stdout, and returns the output
+ * via the buffer-manager protocol (identical to ffiexec_process_io output).
+ *
+ * Input  (8 bytes):
+ *   [ StdoutReadFd : 4 bytes (big-endian) ;
+ *     ChildPid     : 4 bytes (big-endian) ]
+ *
+ * Output: same buffer-manager header as ffiexec_process_io.
+ * ────────────────────────────────────────────────────────────────────────── */
+void fficollect_par_process(const char *commandIn, const long clen, char *a, const long alen)
+{
+  const uint8_t RESPONSE_CODE_START   = 0;
+  const uint8_t OUTPUT_LENGTH_START   = 1;
+  const uint8_t OUTPUT_BUFFER_ID_START = 5;
+  const uint8_t HEADER_LENGTH         = 9;
+
+  if (commandIn == NULL || a == NULL || alen < HEADER_LENGTH || clen < 8)
+  {
+    if (a != NULL && alen >= 1) a[0] = INPUT_DECODE_ERROR;
+    return;
+  }
+  memset(a, 0, (size_t)alen);
+
+  int pipe_read_fd = qword_to_int((unsigned char *)commandIn);
+  int pid          = qword_to_int((unsigned char *)(commandIn + 4));
+  DEBUG_PRINTF("fficollect_par_process: collecting from fd=%d pid=%d\n", pipe_read_fd, pid);
+
+  /* ── Read child stdout ── */
+  FILE *child_stdout = fdopen(pipe_read_fd, "r");
+  if (child_stdout == NULL)
+  {
+    DEBUG_PRINTF("fficollect_par_process: fdopen failed: %s\n", strerror(errno));
+    a[RESPONSE_CODE_START] = FILE_READ_ERROR;
+    return;
+  }
+
+  char  *buffer        = NULL;
+  size_t output_length = 0;
+  uint8_t out_code = read_until_eof(child_stdout, 4096, &buffer, &output_length);
+  fclose(child_stdout); /* also closes pipe_read_fd */
+
+  /* ── Wait for child ── */
+  int status = 0;
+  pid_t wp;
+  do { wp = waitpid(pid, &status, 0); } while (wp < 0 && errno == EINTR);
+
+  if (wp < 0)
+  {
+    if (buffer) free(buffer);
+    a[RESPONSE_CODE_START] = FILE_READ_ERROR;
+    return;
+  }
+  if (WIFEXITED(status) && WEXITSTATUS(status) != 0)
+  {
+    DEBUG_PRINTF("fficollect_par_process: child exited with code %d\n", WEXITSTATUS(status));
+    if (buffer) free(buffer);
+    a[RESPONSE_CODE_START] = FILE_CLOSE_ERROR;
+    return;
+  }
+  if (WIFSIGNALED(status))
+  {
+    DEBUG_PRINTF("fficollect_par_process: child killed by signal %d\n", WTERMSIG(status));
+    if (buffer) free(buffer);
+    a[RESPONSE_CODE_START] = FILE_CLOSE_ERROR;
+    return;
+  }
+
+  if (out_code != SUCCESS || buffer == NULL)
+  {
+    if (buffer) free(buffer);
+    a[RESPONSE_CODE_START] = (out_code != SUCCESS) ? out_code : FAILED_TO_ALLOCATE_BUFFER;
+    return;
+  }
+  if (output_length > UINT32_MAX)
+  {
+    free(buffer);
+    a[RESPONSE_CODE_START] = NEED_MORE_THAN_32_BITS_FOR_LENGTH;
+    return;
+  }
+
+  int buffer_id = set_new_buffer((long)output_length, buffer);
+  if (buffer_id < 0)
+  {
+    free(buffer);
+    a[RESPONSE_CODE_START] = FAILED_TO_ALLOCATE_BUFFER;
+    return;
+  }
+
+  int_to_qword((int)output_length, (unsigned char *)&a[OUTPUT_LENGTH_START]);
+  int_to_qword(buffer_id,          (unsigned char *)&a[OUTPUT_BUFFER_ID_START]);
+  a[RESPONSE_CODE_START] = SUCCESS;
+  DEBUG_PRINTF("fficollect_par_process: collected %zu bytes from pid=%d\n", output_length, pid);
+}

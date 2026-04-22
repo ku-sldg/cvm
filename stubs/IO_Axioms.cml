@@ -5,9 +5,9 @@ structure IO_Axioms = struct
      System_Types.coq_IP_Port -> string -> (string, string)
      ResultMonad.coq_Result **)
 
-    fun decodeUUID (u : System_Types.coq_IP_Port) = 
+    fun decodeUUID (u : System_Types.coq_IP_Port) =
       (* Splits at ":" character, into (ip, port) *)
-      let val colonInt = 
+      let val colonInt =
             case (String.findi (fn c => (Char.chr 58) = c) 0 u) of
               None => raise FalseException "Unable to decode UUID, no splitting ':' found"
               | Some v => v
@@ -24,7 +24,7 @@ structure IO_Axioms = struct
   val make_network_request : (System_Types.coq_IP_Port -> string -> (string,
                             string) ResultMonad.coq_Result) =
     (fn ipport => fn reqstr =>
-    let 
+    let
       val (ip, port) = decodeUUID ipport
       (* val _ = print ("Decoded UUID to: " ^ ip ^ ":" ^ (Int.toString port) ^ "\n") *)
       val socket = SocketFFI.connect ip port
@@ -47,7 +47,7 @@ structure IO_Axioms = struct
   val make_fs_request : (System_Types.coq_FS_Location -> string -> (string,
                        string) ResultMonad.coq_Result) =
     (fn path => fn reqstr =>
-      (let 
+      (let
         (* val _ = print ("Sending a request to the FS: " ^ path ^ "\n") *)
         val resp = SysFFI.c_exec_process_io path reqstr
         (* val _ = print ("Got back a response from the ASP: \n" ^ resp ^ "\n") *)
@@ -65,11 +65,20 @@ structure IO_Axioms = struct
     (fn a => a)
    (* failwith "AXIOM TO BE REALIZED (CVM.IO_Axioms.aspid_to_fs_location)" *)
 
+ (* ── Shared typeclass-instance builder ────────────────────────────────────
+    Both parallel_vm_thread (Phase 1 sequential) and start_par_subprocess
+    (Phase 2) need the same JSON typeclass instances and startup-file logic.
+    We keep them as inline let-bindings in each function (copy-paste) to
+    avoid introducing a helper that would need its own bake ordering.
+    ──────────────────────────────────────────────────────────────────────── *)
+
  (** val parallel_vm_thread :
      Term_Defs_Core.coq_Loc -> Term_Defs_Core.coq_Plc ->
      Term_Defs_Core.coq_Evidence -> Term_Defs_Core.coq_Term ->
      (Term_Defs_Core.coq_Evidence, St.coq_CVM_Error) ResultMonad.coq_Result **)
 
+ (* Phase 1 sequential implementation — kept for reference; no longer called
+    from the Rocq side in Phase 2 (superseded by start/collect below). *)
  val parallel_vm_thread : (Term_Defs_Core.coq_Loc -> Term_Defs_Core.coq_Plc
                           -> Term_Defs_Core.coq_Evidence ->
                           Term_Defs_Core.coq_Term ->
@@ -78,14 +87,11 @@ structure IO_Axioms = struct
     fn loc => fn plc => fn ev => fn term =>
     let
       (* ── Typeclass instances ─────────────────────────────────────── *)
-
-      (* Attestation_Session JSON *)
       val plc_map_json =
         JSON.jsonifiable_map_serial_json
           ID_Type.coq_Stringifiable_ID_Type
           ID_Type.coq_DecEq_ID_Type
           (ID_Type.coq_Jsonifiable_ID_Type ID_Type.coq_Stringifiable_ID_Type)
-
       val global_ctx_json =
         Term_Defs_Core_Typeclasses.coq_Jsonifiable_GlobalContext
           ID_Type.coq_Stringifiable_ID_Type
@@ -97,12 +103,9 @@ structure IO_Axioms = struct
               (Term_Defs_Core_Typeclasses.coq_Jsonifiable_list_Attr
                 Term_Defs_Core_Typeclasses.coq_Jsonifiable_Attr)
               Term_Defs_Core_Typeclasses.coq_Jsonifiable_EvCombSig))
-
       val att_sess_json =
         Attestation_Session.coq_Jsonifiable_Attestation_Session
           plc_map_json plc_map_json global_ctx_json
-
-      (* Evidence JSON *)
       val ev_type_json =
         Term_Defs_Core_Typeclasses.coq_Jsonifiable_EvidenceT
           ID_Type.coq_Stringifiable_ID_Type
@@ -110,43 +113,29 @@ structure IO_Axioms = struct
           JSON.coq_Jsonifiable_nat
           (Term_Defs_Core_Typeclasses.coq_Jsonifiable_ASP_Params
             Term_Defs_Core_Typeclasses.coq_Jsonifiable_ASP_ARGS)
-
       val evidence_json =
         Term_Defs_Core_Typeclasses.coq_Jsonifiable_Evidence
           Term_Defs_Core_Typeclasses.coq_Jsonifiable_RawEv ev_type_json
-
-      (* Term JSON *)
       val term_json =
         Term_Defs_Core_Typeclasses.coq_Jsonifiable_Term
           (Term_Defs_Core_Typeclasses.coq_Jsonifiable_ASP
             Term_Defs_Core_Typeclasses.coq_Jsonifiable_ASP_ARGS)
-
-      (* ProtocolRunRequest / Response JSON *)
       val prreq_json =
         Interface_JSON.coq_Jsonifiable_ProtocolRunRequest
           term_json evidence_json att_sess_json
-
       val prresp_json =
         Interface_JSON.coq_Jsonifiable_ProtocolRunResponse evidence_json
-
-      (* JSON string serializer/parser *)
       val Stringifiable.Build_Stringifiable js_to_str js_from_str =
         JSON_Stringifiable.coq_Stringifiable_JSON
-
-      (* ── Helper: dispatch error ──────────────────────────────────── *)
       fun dispatch_err msg =
         ResultMonad.Coq_err
           (St.Coq_dispatch_error (Attestation_Session.Runtime msg))
-
-      (* ── Step 1: Read and parse the startup file ─────────────────── *)
-      (* Must match AM_Handler.CVM_STARTUP_FILE — inlined to avoid circular dep *)
       val startup_str = Coq_TextIO.TextIO.readFile "/tmp/cvm_startup.json"
     in
       case js_from_str startup_str of
         ResultMonad.Coq_err e =>
           dispatch_err ("parallel_vm_thread: failed to parse startup file: " ^ e)
       | ResultMonad.Coq_res startup_js =>
-      (* ── Step 2: Extract cvm_binary and att_sess ─────────────────── *)
       case JSON.coq_JSON_get_string "cvm_binary" startup_js of
         ResultMonad.Coq_err e =>
           dispatch_err ("parallel_vm_thread: missing cvm_binary in startup file: " ^ e)
@@ -160,15 +149,12 @@ structure IO_Axioms = struct
         ResultMonad.Coq_err e =>
           dispatch_err ("parallel_vm_thread: failed to deserialize att_sess: " ^ e)
       | ResultMonad.Coq_res att_sess =>
-      (* ── Step 3: Build ProtocolRunRequest for the parallel branch ── *)
       let
         val req = Interface_Types.Coq_mkPRReq att_sess plc ev term
         val JSON.Build_Jsonifiable prreq_to_json _ = prreq_json
         val req_str = js_to_str (prreq_to_json req)
-        (* ── Step 4: Spawn subprocess CVM synchronously ───────────── *)
         val resp_str = SysFFI.c_exec_process_io cvm_binary req_str
       in
-      (* ── Step 5: Parse response and extract evidence ─────────────── *)
       case js_from_str resp_str of
         ResultMonad.Coq_err e =>
           dispatch_err ("parallel_vm_thread: failed to parse subprocess response: " ^ e)
@@ -184,4 +170,192 @@ structure IO_Axioms = struct
       end
       end
     end
+
+ (* ── Phase 2: split spawn / collect ──────────────────────────────────────
+    coq_Loc extracts to CML int, so we use it directly.
+    Handles are stored in per-loc temp files: /tmp/cvm_par_<loc>.handle
+    containing "<fd>\n<pid>" so no mutable CML state is needed.
+    ──────────────────────────────────────────────────────────────────────── *)
+
+ fun par_handle_path (loc : int) =
+   "/tmp/cvm_par_" ^ Int.toString loc ^ ".handle"
+
+ fun par_write_handle (loc : int) (fd : int) (pid_v : int) =
+   Coq_TextIO.TextIO.writeFile (par_handle_path loc)
+     (Int.toString fd ^ "\n" ^ Int.toString pid_v)
+
+ fun par_read_handle (loc : int) =
+   let val content = Coq_TextIO.TextIO.readFile (par_handle_path loc)
+       val parts   = String.tokens (fn c => c = #"\n") content
+   in
+     case parts of
+       [fd_s, pid_s] =>
+         (case (Int.fromString fd_s, Int.fromString pid_s) of
+           (Some fd, Some pid_v) => Some (fd, pid_v)
+         | _ => None)
+     | _ => None
+   end
+
+ (** val start_par_subprocess :
+     Term_Defs_Core.coq_Loc -> Term_Defs_Core.coq_Plc ->
+     Term_Defs_Core.coq_Evidence -> Term_Defs_Core.coq_Term ->
+     (unit, St.coq_CVM_Error) ResultMonad.coq_Result **)
+
+ val start_par_subprocess : (Term_Defs_Core.coq_Loc -> Term_Defs_Core.coq_Plc
+                            -> Term_Defs_Core.coq_Evidence ->
+                            Term_Defs_Core.coq_Term ->
+                            (unit, St.coq_CVM_Error) ResultMonad.coq_Result) =
+   fn loc => fn plc => fn ev => fn term =>
+   let
+     (* ── Typeclass instances (copy of parallel_vm_thread) ─────────── *)
+     val plc_map_json =
+       JSON.jsonifiable_map_serial_json
+         ID_Type.coq_Stringifiable_ID_Type
+         ID_Type.coq_DecEq_ID_Type
+         (ID_Type.coq_Jsonifiable_ID_Type ID_Type.coq_Stringifiable_ID_Type)
+     val global_ctx_json =
+       Term_Defs_Core_Typeclasses.coq_Jsonifiable_GlobalContext
+         ID_Type.coq_Stringifiable_ID_Type
+         plc_map_json
+         (JSON.jsonifiable_map_serial_json
+           ID_Type.coq_Stringifiable_ID_Type
+           ID_Type.coq_DecEq_ID_Type
+           (Term_Defs_Core_Typeclasses.coq_Jsonifiable_EvSig
+             (Term_Defs_Core_Typeclasses.coq_Jsonifiable_list_Attr
+               Term_Defs_Core_Typeclasses.coq_Jsonifiable_Attr)
+             Term_Defs_Core_Typeclasses.coq_Jsonifiable_EvCombSig))
+     val att_sess_json =
+       Attestation_Session.coq_Jsonifiable_Attestation_Session
+         plc_map_json plc_map_json global_ctx_json
+     val ev_type_json =
+       Term_Defs_Core_Typeclasses.coq_Jsonifiable_EvidenceT
+         ID_Type.coq_Stringifiable_ID_Type
+         Term_Defs_Core_Typeclasses.coq_Jsonifiable_ASP_ARGS
+         JSON.coq_Jsonifiable_nat
+         (Term_Defs_Core_Typeclasses.coq_Jsonifiable_ASP_Params
+           Term_Defs_Core_Typeclasses.coq_Jsonifiable_ASP_ARGS)
+     val evidence_json =
+       Term_Defs_Core_Typeclasses.coq_Jsonifiable_Evidence
+         Term_Defs_Core_Typeclasses.coq_Jsonifiable_RawEv ev_type_json
+     val term_json =
+       Term_Defs_Core_Typeclasses.coq_Jsonifiable_Term
+         (Term_Defs_Core_Typeclasses.coq_Jsonifiable_ASP
+           Term_Defs_Core_Typeclasses.coq_Jsonifiable_ASP_ARGS)
+     val prreq_json =
+       Interface_JSON.coq_Jsonifiable_ProtocolRunRequest
+         term_json evidence_json att_sess_json
+     val Stringifiable.Build_Stringifiable js_to_str js_from_str =
+       JSON_Stringifiable.coq_Stringifiable_JSON
+     fun dispatch_err msg =
+       ResultMonad.Coq_err
+         (St.Coq_dispatch_error (Attestation_Session.Runtime msg))
+     (* ── Step 1: Read and parse the startup file ──────────────────── *)
+     val startup_str = Coq_TextIO.TextIO.readFile "/tmp/cvm_startup.json"
+   in
+     case js_from_str startup_str of
+       ResultMonad.Coq_err e =>
+         dispatch_err ("start_par_subprocess: failed to parse startup file: " ^ e)
+     | ResultMonad.Coq_res startup_js =>
+     (* ── Step 2: Extract cvm_binary and att_sess ──────────────────── *)
+     case JSON.coq_JSON_get_string "cvm_binary" startup_js of
+       ResultMonad.Coq_err e =>
+         dispatch_err ("start_par_subprocess: missing cvm_binary in startup file: " ^ e)
+     | ResultMonad.Coq_res cvm_binary =>
+     case JSON.coq_JSON_get_Object "att_sess" startup_js of
+       ResultMonad.Coq_err e =>
+         dispatch_err ("start_par_subprocess: missing att_sess in startup file: " ^ e)
+     | ResultMonad.Coq_res att_sess_obj =>
+     let val JSON.Build_Jsonifiable _ att_sess_from_json = att_sess_json in
+     case att_sess_from_json att_sess_obj of
+       ResultMonad.Coq_err e =>
+         dispatch_err ("start_par_subprocess: failed to deserialize att_sess: " ^ e)
+     | ResultMonad.Coq_res att_sess =>
+     (* ── Step 3: Build ProtocolRunRequest ─────────────────────────── *)
+     let
+       val req = Interface_Types.Coq_mkPRReq att_sess plc ev term
+       val JSON.Build_Jsonifiable prreq_to_json _ = prreq_json
+       val req_str = js_to_str (prreq_to_json req)
+       (* ── Step 4: Non-blocking fork — returns (fd, pid) immediately ─ *)
+       val (fd, pid) = SysFFI.c_spawn_par_process cvm_binary req_str
+       (* ── Step 5: Persist handle to temp file indexed by loc ──────── *)
+       val _ = par_write_handle loc fd pid
+     in
+       ResultMonad.Coq_res ()
+     end
+     end
+   end
+
+ (** val collect_par_subprocess :
+     Term_Defs_Core.coq_Loc -> Term_Defs_Core.coq_Plc ->
+     Term_Defs_Core.coq_Evidence -> Term_Defs_Core.coq_Term ->
+     (Term_Defs_Core.coq_Evidence, St.coq_CVM_Error) ResultMonad.coq_Result **)
+
+ val collect_par_subprocess : (Term_Defs_Core.coq_Loc -> Term_Defs_Core.coq_Plc
+                              -> Term_Defs_Core.coq_Evidence ->
+                              Term_Defs_Core.coq_Term ->
+                              (Term_Defs_Core.coq_Evidence, St.coq_CVM_Error)
+                              ResultMonad.coq_Result) =
+   fn loc => fn plc => fn ev => fn term =>
+   let
+     (* ── Typeclass instances (copy of parallel_vm_thread) ─────────── *)
+     val plc_map_json =
+       JSON.jsonifiable_map_serial_json
+         ID_Type.coq_Stringifiable_ID_Type
+         ID_Type.coq_DecEq_ID_Type
+         (ID_Type.coq_Jsonifiable_ID_Type ID_Type.coq_Stringifiable_ID_Type)
+     val global_ctx_json =
+       Term_Defs_Core_Typeclasses.coq_Jsonifiable_GlobalContext
+         ID_Type.coq_Stringifiable_ID_Type
+         plc_map_json
+         (JSON.jsonifiable_map_serial_json
+           ID_Type.coq_Stringifiable_ID_Type
+           ID_Type.coq_DecEq_ID_Type
+           (Term_Defs_Core_Typeclasses.coq_Jsonifiable_EvSig
+             (Term_Defs_Core_Typeclasses.coq_Jsonifiable_list_Attr
+               Term_Defs_Core_Typeclasses.coq_Jsonifiable_Attr)
+             Term_Defs_Core_Typeclasses.coq_Jsonifiable_EvCombSig))
+     val att_sess_json =
+       Attestation_Session.coq_Jsonifiable_Attestation_Session
+         plc_map_json plc_map_json global_ctx_json
+     val ev_type_json =
+       Term_Defs_Core_Typeclasses.coq_Jsonifiable_EvidenceT
+         ID_Type.coq_Stringifiable_ID_Type
+         Term_Defs_Core_Typeclasses.coq_Jsonifiable_ASP_ARGS
+         JSON.coq_Jsonifiable_nat
+         (Term_Defs_Core_Typeclasses.coq_Jsonifiable_ASP_Params
+           Term_Defs_Core_Typeclasses.coq_Jsonifiable_ASP_ARGS)
+     val evidence_json =
+       Term_Defs_Core_Typeclasses.coq_Jsonifiable_Evidence
+         Term_Defs_Core_Typeclasses.coq_Jsonifiable_RawEv ev_type_json
+     val prresp_json =
+       Interface_JSON.coq_Jsonifiable_ProtocolRunResponse evidence_json
+     val Stringifiable.Build_Stringifiable js_to_str js_from_str =
+       JSON_Stringifiable.coq_Stringifiable_JSON
+     fun dispatch_err msg =
+       ResultMonad.Coq_err
+         (St.Coq_dispatch_error (Attestation_Session.Runtime msg))
+     (* ── Step 1: Read the handle for this loc from temp file ────────── *)
+   in
+     case par_read_handle loc of
+       None =>
+         dispatch_err ("collect_par_subprocess: no handle for loc " ^ Int.toString loc)
+     | Some (fd, pid) =>
+     (* ── Step 2: Block until subprocess exits, read its stdout ──────── *)
+     let val resp_str = SysFFI.c_collect_par_process fd pid in
+     (* ── Step 3: Parse response and extract evidence ──────────────── *)
+     case js_from_str resp_str of
+       ResultMonad.Coq_err e =>
+         dispatch_err ("collect_par_subprocess: failed to parse subprocess response: " ^ e)
+     | ResultMonad.Coq_res resp_js =>
+     let val JSON.Build_Jsonifiable _ prresp_from_json = prresp_json in
+     case prresp_from_json resp_js of
+       ResultMonad.Coq_err e =>
+         dispatch_err ("collect_par_subprocess: failed to deserialize response: " ^ e)
+     | ResultMonad.Coq_res resp =>
+       ResultMonad.Coq_res
+         (let val Interface_Types.Coq_mkPRResp _ ev_out = resp in ev_out end)
+     end
+     end
+   end
+
 end
