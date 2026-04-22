@@ -1204,21 +1204,26 @@ Proof.
     eapply events_range; eauto; ff with a).
   - destruct e; Control.enter (fun () =>
     ff with a; invc H0; ff with a;
-    (* Phase 2: expose start_par_subprocess via first cvm_monad_unfold,
-       then rewrite it to res tt before ff does a case split on it.
-       This ensures Heq = build_cvm t1 hypothesis (not start_par_subprocess). *)
+    (* Phase 2: normalize start_par_subprocess → res tt before ff sees it,
+       keeping parallel_vm_thread_axiom (for collect_par_subprocess / t2)
+       out of the loop so only one build_cvm hypothesis exists when we
+       apply IHt1.  We then find that hypothesis dynamically via match!. *)
     cvm_monad_unfold;
     repeat (
-    try (rewrite start_par_subprocess_axiom in *);
-    cvm_monad_unfold; ff with a;
+      try (rewrite start_par_subprocess_axiom in *);
+      cvm_monad_unfold; ff with a;
+      try (unfold do_start_par_thread in *);
+      try (find_eapply_lem_hyp start_par_subprocess_axiom);
+      simpl in *; repeat find_rewrite;
+      repeat (find_injection; ff));
+    (* At this point the only build_cvm hyp is the t1 one — find it. *)
+    match! goal with
+    | [ h : build_cvm _ _ _ _ = (res _, _) |- _ ] =>
+      eapply IHt1 in $h as ?; eauto; ff; try lia;
+      eapply cvm_spans in $h as ?; eauto; ff
+    end;
+    (* Now bring in the t2 result via parallel_vm_thread_axiom. *)
     try (find_eapply_lem_hyp parallel_vm_thread_axiom);
-    try (unfold do_start_par_thread in *);
-
-        try (find_eapply_lem_hyp start_par_subprocess_axiom);
-    simpl in *; repeat find_rewrite;
-    repeat (find_injection; ff)));
-    eapply IHt1 in Heq1 as ?; eauto; ff; try lia;
-    eapply cvm_spans in Heq1 as ?; eauto; ff;
     try (repeat find_rewrite; simpl in *;
       eapply events_range; eauto; ff; fail);
     repeat find_rewrite; try lia;
@@ -1229,7 +1234,7 @@ Proof.
     erewrite events_events_fix_eq in *; ff;
     assert (n = List.length evs2) by (
       repeat (find_eapply_lem_hyp events_fix_range); eauto; ff);
-    ff.
+    ff).
 Qed.
 
 Corollary cvm_trace_respects_events_default : forall G,
