@@ -1,4 +1,4 @@
-(* deps: AM_Handler Attestation_Session ID_Type Interface_JSON Interface_String_Vars Interface_Types JSON JSON_Stringifiable JSON_Type Manifest_TCs ResultMonad St Stringifiable System_Types Term_Defs_Core Term_Defs_Core_Typeclasses Coq_TextIO ExtractionPrelude $FFI.SocketFFI $FFI.SysFFI $JSON_Axioms *)
+(* deps: Attestation_Session ID_Type Interface_JSON Interface_String_Vars Interface_Types JSON JSON_Stringifiable JSON_Type Manifest_TCs ResultMonad St Stringifiable System_Types Term_Defs_Core Term_Defs_Core_Typeclasses Coq_TextIO ExtractionPrelude $FFI.SocketFFI $FFI.SysFFI $JSON_Axioms *)
 
 structure IO_Axioms = struct
  (** val make_network_request :
@@ -139,7 +139,8 @@ structure IO_Axioms = struct
           (St.Coq_dispatch_error (Attestation_Session.Runtime msg))
 
       (* ── Step 1: Read and parse the startup file ─────────────────── *)
-      val startup_str = Coq_TextIO.TextIO.readFile AM_Handler.coq_CVM_STARTUP_FILE
+      (* Must match AM_Handler.CVM_STARTUP_FILE — inlined to avoid circular dep *)
+      val startup_str = Coq_TextIO.TextIO.readFile "/tmp/cvm_startup.json"
     in
       case js_from_str startup_str of
         ResultMonad.Coq_err e =>
