@@ -9,16 +9,8 @@ Axiom parallel_vm_thread_axiom : forall i t e p res,
     session_plc (cc_session sc) = p ->
     exists st', build_cvm e t sc st = (res, st').
 
-Axiom start_par_subprocess_axiom : forall i p e t, 
-start_par_subprocess i p e t = res tt.
-(*
-    Definition start_par_subprocess (loc:Loc) (p:Plc) (e:Evidence) (t:Term)
-    : Result unit CVM_Error. Admitted.
-*)
-(*
-Definition collect_par_subprocess (loc:Loc) (p:Plc) (e:Evidence) (t:Term)
-    : Result Evidence CVM_Error. Admitted.
-*)
+Axiom start_par_subprocess_axiom : forall i p e t,
+  start_par_subprocess i p e t = CVM_ret tt.
 
 Axiom do_remote_res_axiom : forall (cfg : CVM_Config) p e t res,
   do_remote (cc_session cfg) p e t = res ->

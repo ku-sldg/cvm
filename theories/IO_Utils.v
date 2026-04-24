@@ -28,7 +28,5 @@ Definition make_JSON_FS_Location_Request (dir : FS_Location) (aspid : FS_Locatio
   from_string resstr.
 
 Definition do_start_par_thread (loc:Loc) (p:Plc) (e: Evidence) (t: Term) : CVM unit :=
-  match start_par_subprocess loc p e t with
-  | res tt => CVM_ret tt
-  | err s  => CVM_fail s
-  end.
+  start_par_subprocess loc p e t.
+Hint Unfold do_start_par_thread : cvm.

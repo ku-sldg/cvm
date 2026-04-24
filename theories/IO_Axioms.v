@@ -37,7 +37,7 @@ Definition parallel_vm_thread (l:Loc) (p:Plc) (e:Evidence) (t: Term) : Result Ev
     [collect_par_subprocess] blocks until the subprocess launched at [loc]
     exits, reads its stdout, and deserialises the returned Evidence. *)
 Definition start_par_subprocess (loc:Loc) (p:Plc) (e:Evidence) (t:Term)
-    : Result unit CVM_Error. Admitted.
+    : CVM unit. Admitted.
 
 Definition collect_par_subprocess (loc:Loc) (p:Plc) (e:Evidence) (t:Term)
     : Result Evidence CVM_Error. Admitted.

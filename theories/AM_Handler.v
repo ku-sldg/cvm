@@ -48,14 +48,13 @@ Definition handle_AM_request
   if (dec_eq action_str STR_RUN) then
     (* Run the protocol *)
     '(mkPRReq att_sess req_plc init_ev term) <- from_JSON jsreq ;;
-    (* If the term contains bpar, write the startup file so that
-       parallel_vm_thread can launch a subprocess CVM instance. *)
+    (* Warn if the term contains bpar but no cvm_binary was provided.
+       The CVM_Config monad reader carries cvm_binary to start_par_subprocess;
+       no startup file is written (Option B). *)
     let _ :=
       if term_has_bpar term then
         match cvm_binary_opt with
-        | Some cvm_bin =>
-          TextIO.writeFile CVM_STARTUP_FILE
-            (to_string (build_startup_json conf att_sess cvm_bin))
+        | Some _ => tt
         | None =>
           TextIO.printLn_err
             "WARNING: term contains bpar but --cvm_binary was not provided; \

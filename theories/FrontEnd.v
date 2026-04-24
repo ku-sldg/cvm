@@ -156,20 +156,22 @@ Definition cvm_front_end : unit :=
    * ------------------------------------------------------------------ *)
   match comargs with
   | [] =>
-    (* Stdin mode: the subprocess CVM reads its session config from the
-       startup file written by the parent, then reads the actual
-       ProtocolRunRequest JSON from stdin.  This keeps the request format
-       identical to the normal CLI mode; only the config source changes. *)
-    let startup_str := TextIO.readFile AM_Handler.CVM_STARTUP_FILE in
-    let req_str     := read_all_stdin in
+    (* Stdin mode: the subprocess CVM receives a single inline bundle JSON
+       on stdin, containing all config it needs plus the ProtocolRunRequest.
+       Format: { "cvm_binary": "...", "manifest": {...}, "asp_bin": "...",
+                 "request": { <PRReq JSON object> } }
+       No startup file is read; everything comes from the bundle. *)
+    let bundle_str := read_all_stdin in
     let runtime : Result string string := (
-      startup_js   <- from_string startup_str ;;
-      manifest_js  <- JSON_get_Object "manifest"   startup_js ;;
-      asp_bin_val  <- JSON_get_string "asp_bin"    startup_js ;;
-      cvm_bin_str  <- JSON_get_string "cvm_binary" startup_js ;;
+      bundle_js    <- from_string bundle_str ;;
+      manifest_js  <- JSON_get_Object "manifest"   bundle_js ;;
+      asp_bin_val  <- JSON_get_string "asp_bin"    bundle_js ;;
+      cvm_bin_str  <- JSON_get_string "cvm_binary" bundle_js ;;
+      req_js       <- JSON_get_Object "request"    bundle_js ;;
       manifest_val <- from_JSON manifest_js ;;
       let am_manager_conf := mkAM_Man_Conf manifest_val asp_bin_val in
       let cvm_binary_opt  := Some cvm_bin_str in
+      let req_str         := to_string req_js in
       handle_AM_request am_manager_conf cvm_binary_opt req_str
     ) in
     match runtime with
