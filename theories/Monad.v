@@ -14,8 +14,12 @@ Definition get_st : CVM cvm_st :=
 Hint Unfold get_st : cvm.
 
 Definition get_config : CVM Session_Config :=
-  CVM_ask.
+  CVM_ask_session.
 Hint Unfold get_config : cvm.
+
+Definition get_cvm_config : CVM CVM_Config :=
+  CVM_ask.
+Hint Unfold get_cvm_config : cvm.
 
 Definition get_trace : CVM (list Ev) :=
   st <- get_st ;;cvm

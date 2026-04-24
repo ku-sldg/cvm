@@ -35,7 +35,7 @@ Proof.
 Qed.
 
 Lemma invoke_APPR_deterministic : forall G e sc st1 st2 st1' st2' res1 res2 r oe,
-  G = session_context sc ->
+  G = session_context (cc_session sc) ->
   st_evid st1 = st_evid st2 ->
   invoke_APPR' r e oe sc st1 = (res1, st1') ->
   invoke_APPR' r e oe sc st2 = (res2, st2') ->
@@ -105,7 +105,7 @@ Proof.
 Qed.
 
 Theorem invoke_APPR_deterministic_Evidence : forall G et st1 st2 r1 r2 st1' st2' r sc eo,
-  G = session_context sc ->
+  G = session_context (cc_session sc) ->
   invoke_APPR' r et eo sc st1 = (r1, st1') ->
   invoke_APPR' r et eo sc st2 = (r2, st2') ->
   r1 = r2.
@@ -328,10 +328,10 @@ Proof.
 Qed.
 
 Lemma invoke_APPR'_spans : forall G' et r e' sc c i st eo,
-  G' = session_context sc ->
+  G' = session_context (cc_session sc) ->
   invoke_APPR' r et eo sc st = (res e', c) ->
   forall G,
-  G = session_context sc ->
+  G = session_context (cc_session sc) ->
   appr_events_size G et = res i ->
   st_evid c = st_evid st + i.
 Proof.
@@ -677,15 +677,15 @@ Definition well_formed_context (G : GlobalContext) : Prop :=
 
 Lemma invoke_ASP_evidence : forall e par st sc e' st',
   invoke_ASP e par sc st = (res e', st') ->
-  get_et e' = asp_evt (session_plc sc) par (get_et e).
+  get_et e' = asp_evt (session_plc (cc_session sc)) par (get_et e).
 Proof.
   cvm_monad_unfold; ff.
 Qed.
 
 Theorem invoke_APPR'_evidence : forall G et st r sc st' e' e eo,
-  G = session_context sc ->
+  G = session_context (cc_session sc) ->
   invoke_APPR' r et eo sc st = (res e', st') ->
-  appr_procedure' (session_context sc) (session_plc sc) et eo = res e ->
+  appr_procedure' (session_context (cc_session sc)) (session_plc (cc_session sc)) et eo = res e ->
   get_et e' = e.
 Proof.
   intros G.
@@ -726,7 +726,7 @@ Qed.
 
 Theorem cvm_evidence_type : forall t e e' st st' sc et',
   build_cvm e t sc st = (res e', st') ->
-  eval (session_context sc) (session_plc sc) (get_et e) t = res et' ->
+  eval (session_context (cc_session sc)) (session_plc (cc_session sc)) (get_et e) t = res et' ->
   get_et e' = et'.
 Proof.
   induction t; simpl in *; intuition.
@@ -764,9 +764,9 @@ Qed.
 
 (** * Lemma:  CVM increases event IDs according to event_id_span' denotation. *)
 Lemma cvm_spans: forall t st e st' sc i e',
-  well_formed_context (session_context sc) ->
+  well_formed_context (session_context (cc_session sc)) ->
   build_cvm e t sc st = (res e', st') ->
-  events_size (session_context sc) (session_plc sc) (get_et e) t = res i ->
+  events_size (session_context (cc_session sc)) (session_plc (cc_session sc)) (get_et e) t = res i ->
   st_evid st' = st_evid st + i.
 Proof.
   induction t; simpl in *; intuition.
@@ -884,11 +884,11 @@ Proof.
 Qed.
 
 Lemma wf_Evidence_invoke_APPR : forall G et r eo st e' st' sc,
-  G = session_context sc ->
-  wf_Evidence (session_context sc) (evc r et) ->
-  wf_Evidence (session_context sc) (evc r eo) ->
+  G = session_context (cc_session sc) ->
+  wf_Evidence (session_context (cc_session sc)) (evc r et) ->
+  wf_Evidence (session_context (cc_session sc)) (evc r eo) ->
   invoke_APPR' r et eo sc st = (res e', st') ->
-  wf_Evidence (session_context sc) e'.
+  wf_Evidence (session_context (cc_session sc)) e'.
 Proof.
   intros G.
   induction et using (Evidence_subterm_path_Ind_special G); intuition.
@@ -981,9 +981,9 @@ Qed.
 (** * Theorem:  CVM execution preserves well-formedness of Evidence bundles 
       (EvidenceT Type of sufficient length for raw EvidenceT). *)
 Theorem cvm_preserves_wf_Evidence : forall t st st' e e' sc,
-  wf_Evidence (session_context sc) e ->
+  wf_Evidence (session_context (cc_session sc)) e ->
   build_cvm e t sc st = (res e', st') ->
-  wf_Evidence (session_context sc) e'.
+  wf_Evidence (session_context (cc_session sc)) e'.
 Proof.
   induction t; simpl in *; intros; cvm_monad_unfold.
   - ff;
@@ -1002,9 +1002,9 @@ Proof.
       f_equal; lia).
     eapply wf_Evidence_invoke_APPR; eauto; destruct e; ff.
   - ff;
-    find_eapply_lem_hyp do_remote_res_axiom; eauto; ff.
-    Unshelve. 
-    eapply 0.
+    find_eapply_lem_hyp do_remote_res_axiom; ff; eauto; ff.
+    find_eapply_lem_hyp IHt; ff.
+    Unshelve. eapply 0.
   - ff.
   - ff; simpl in *.
     eapply IHt1 in Heq > [ | eapply wf_Evidence_proc_left; ff ].
@@ -1025,12 +1025,12 @@ Proof.
 Qed.
 
 Theorem invoke_APPR_respects_events : forall G et r eo st sc st' e' i m evs,
-  G = session_context sc ->
-  well_formed_context (session_context sc) ->
+  G = session_context (cc_session sc) ->
+  well_formed_context (session_context (cc_session sc)) ->
   st_evid st = i ->
   st_trace st = m ->
   invoke_APPR' r et eo sc st = (res e', st') ->
-  appr_events' (session_context sc) (session_plc sc) et eo i = res evs ->
+  appr_events' (session_context (cc_session sc)) (session_plc (cc_session sc)) et eo i = res evs ->
   st_trace st' = m ++ evs.
 Proof.
   intros G.
@@ -1134,11 +1134,11 @@ Qed.
 (** * Main Theorem: CVM traces are respected the reference "events"
       semantics. *)
 Theorem cvm_trace_respects_events : forall t st m st' i p e evs sc e',
-  well_formed_context (session_context sc) ->
-  events (session_context sc) (cop_phrase p (get_et e) t) i evs ->
+  well_formed_context (session_context (cc_session sc)) ->
+  events (session_context (cc_session sc)) (cop_phrase p (get_et e) t) i evs ->
   st_trace st = m ->
   st_evid st = i ->
-  session_plc sc = p ->
+  session_plc (cc_session sc) = p ->
   build_cvm e t sc st = (res e', st') ->
   st_trace st' = m ++ evs.
 Proof.
@@ -1242,8 +1242,8 @@ Corollary cvm_trace_respects_events_default : forall G,
   forall t st st' i p e evs sc e',
   st_trace st = nil ->
   st_evid st = i ->
-  session_plc sc = p ->
-  session_context sc = G ->
+  session_plc (cc_session sc) = p ->
+  session_context (cc_session sc) = G ->
   events G (cop_phrase p (get_et e) t) i evs ->
 
   build_cvm e t sc st = (res e', st') ->

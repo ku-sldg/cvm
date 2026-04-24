@@ -7,6 +7,7 @@ Author:  Adam Petz, ampetz@ku.edu
 *)
 From RocqCandy Require Import All.
 From CoplandSpec Require Export Term_Defs Attestation_Session.
+From CoplandManifestTools Require Import Manifest.
 
 (** CVM monad state structure.
 
@@ -45,8 +46,18 @@ Definition CVM_Error_to_string (e : CVM_Error) : string :=
   end.
 Opaque CVM_Error_to_string.
 
-Definition CVM A : Type := 
-  Config Session_Config (State cvm_st (Result A CVM_Error)).
+(** Runtime configuration threaded read-only through the CVM monad.
+    Extends Session_Config with the paths/data needed to spawn subprocess
+    CVM instances for bpar terms, eliminating the shared startup file. *)
+Record CVM_Config : Type := mk_cvm_cfg {
+  cc_session  : Session_Config ;
+  cc_asp_bin  : string ;
+  cc_cvm_bin  : string ;
+  cc_manifest : Manifest ;
+}.
+
+Definition CVM A : Type :=
+  Config CVM_Config (State cvm_st (Result A CVM_Error)).
 
 Global Create HintDb cvm.
 
@@ -62,14 +73,19 @@ Definition CVM_ret {A} (a : A) : CVM A :=
   fun _ st => (res a, st).
 Definition CVM_fail {A} (e : CVM_Error) : CVM A :=
   fun _ st => (err e, st).
-Definition CVM_ask : CVM Session_Config :=
+Definition CVM_ask : CVM CVM_Config :=
   fun conf st => (res conf, st).
+(** Project only the Session_Config out of the CVM reader environment.
+    Use this everywhere the old CVM_ask was used to avoid touching every
+    call-site while the CVM_Config record is being introduced. *)
+Definition CVM_ask_session : CVM Session_Config :=
+  fun conf st => (res (cc_session conf), st).
 Definition CVM_put (st : cvm_st) : CVM unit :=
   fun _ _ => (res tt, st).
 Definition CVM_get : CVM cvm_st :=
   fun _ st => (res st, st).
 
-Global Hint Unfold CVM_bind CVM_ret CVM_ask CVM_put CVM_get CVM_fail : cvm.
+Global Hint Unfold CVM_bind CVM_ret CVM_ask CVM_ask_session CVM_put CVM_get CVM_fail : cvm.
 
 Notation "x <- m ;;cvm c" := (CVM_bind m (fun x => c))
   (at level 61, m at next level, right associativity).

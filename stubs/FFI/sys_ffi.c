@@ -626,6 +626,22 @@ void ffic_getpid(const char *in, const long ilen, char *a, const long alen)
   int_to_qword((int)getpid(), (unsigned char *)a);
 }
 
+/* ──────────────────────────────────────────────────────────────────────────
+ * ffic_getppid
+ *
+ * Returns the calling process's PARENT PID as a 4-byte big-endian integer.
+ * Used to namespace startup files: each subprocess CVM reads
+ * /tmp/cvm_startup_<ppid>.json to get its parent's configuration.
+ *
+ * Input:  ignored (pass 4 zero bytes)
+ * Output: [ PPID : 4 bytes (big-endian) ]
+ * ────────────────────────────────────────────────────────────────────────── */
+void ffic_getppid(const char *in, const long ilen, char *a, const long alen)
+{
+  if (a == NULL || alen < 4) return;
+  int_to_qword((int)getppid(), (unsigned char *)a);
+}
+
 void fficollect_par_process(const char *commandIn, const long clen, char *a, const long alen)
 {
   const uint8_t RESPONSE_CODE_START   = 0;

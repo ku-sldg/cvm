@@ -63,9 +63,13 @@ Definition handle_AM_request
         end
       else tt
     in
-    let sc := session_config_compiler conf att_sess in
+    let sc  := session_config_compiler conf att_sess in
+    let cfg := mk_cvm_cfg sc
+                 (am_manager_asp_bin conf)
+                 (match cvm_binary_opt with Some b => b | None => "" end)
+                 (am_manager_manifest conf) in
     let init_st := mk_st [] 0 in
-    let '(cvm_resp, _) := build_cvm init_ev term sc init_st in
+    let '(cvm_resp, _) := build_cvm init_ev term cfg init_st in
     match cvm_resp with
     | err e => err (CVM_Error_to_string e)
     | res ev => res (to_string (to_JSON (mkPRResp true ev)))
