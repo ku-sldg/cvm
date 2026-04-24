@@ -177,8 +177,12 @@ structure IO_Axioms = struct
     containing "<fd>\n<pid>" so no mutable CML state is needed.
     ──────────────────────────────────────────────────────────────────────── *)
 
+ (* Include the calling process's PID in the handle file name so that
+    nested bpar subprocesses (which reset st_evid to 0 and thus reuse
+    loc=0,1,…) don't overwrite the parent CVM's handle files.
+    Each CVM process writes and reads only its own PID-namespaced files. *)
  fun par_handle_path (loc : int) =
-   "/tmp/cvm_par_" ^ Int.toString loc ^ ".handle"
+   "/tmp/cvm_par_" ^ Int.toString (SysFFI.c_getpid ()) ^ "_" ^ Int.toString loc ^ ".handle"
 
  fun par_write_handle (loc : int) (fd : int) (pid_v : int) =
    Coq_TextIO.TextIO.writeFile (par_handle_path loc)

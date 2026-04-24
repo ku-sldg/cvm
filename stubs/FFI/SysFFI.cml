@@ -8,6 +8,7 @@ structure SysFFI = struct
       fun ffi_exec_process_io     x y = #(exec_process_io)      x y
       fun ffi_spawn_par_process   x y = #(spawn_par_process)    x y
       fun ffi_collect_par_process x y = #(collect_par_process)  x y
+      fun ffi_c_getpid            x y = #(c_getpid)             x y
   in
 
     (**
@@ -77,6 +78,18 @@ structure SysFFI = struct
       end
       handle Exception e => raise (Exception e)
            | _ => raise (Exception "Unknown Error thrown from c_collect_par_process")
+
+    (**
+     * c_getpid: Return the calling process's PID as an integer.
+     * Used to namespace par-handle temp files so subprocess CVM instances
+     * don't collide with the parent CVM's handle files (both reset loc to 0).
+     *)
+    fun c_getpid () =
+      let val zero_bs = BString.fromString "\000\000\000\000"
+          val resp    = FFI.call ffi_c_getpid 4 zero_bs
+      in
+        BString.qword_to_int resp
+      end
 
   end
 

@@ -610,6 +610,22 @@ void ffispawn_par_process(const char *commandIn, const long clen, char *a, const
  *
  * Output: same buffer-manager header as ffiexec_process_io.
  * ────────────────────────────────────────────────────────────────────────── */
+/* ──────────────────────────────────────────────────────────────────────────
+ * ffic_getpid
+ *
+ * Returns the calling process's PID as a 4-byte big-endian integer.
+ * Used to namespace par-handle temp files so subprocess CVMs don't
+ * collide with the parent's handle files when both use loc=0,1,…
+ *
+ * Input:  ignored (pass 4 zero bytes)
+ * Output: [ PID : 4 bytes (big-endian) ]
+ * ────────────────────────────────────────────────────────────────────────── */
+void ffic_getpid(const char *in, const long ilen, char *a, const long alen)
+{
+  if (a == NULL || alen < 4) return;
+  int_to_qword((int)getpid(), (unsigned char *)a);
+}
+
 void fficollect_par_process(const char *commandIn, const long clen, char *a, const long alen)
 {
   const uint8_t RESPONSE_CODE_START   = 0;
