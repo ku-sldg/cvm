@@ -2,6 +2,7 @@ From CVM Require Import Impl Session_Config_Compiler AM_Handler AM_Manager.
 From CoplandManifestTools Require Import Manifest.
 From CLITools Require Import CLI_Tools.
 From RocqLogging Require Import Logging.
+From RocqJSON Require Import JSON.
 From EasyBakeCakeML Require Import
   EasyBakeCakeML
   ExtrCakeMLNativeString
@@ -74,6 +75,14 @@ Definition request_file_arg_spec : arg_spec := {|
   arg_default := None
 |}.
 
+Definition cvm_binary_arg_spec : arg_spec := {|
+  arg_name := "cvm_binary";
+  arg_kind := ArgOption;
+  arg_required := false;
+  arg_help := "Path to this CVM binary, used to spawn subprocess CVM instances for parallel (bpar) terms.";
+  arg_default := None
+|}.
+
 (*
 Inductive LogLevel : Type :=
 | Debug
@@ -124,13 +133,57 @@ Definition unwrap_opt {A B} (opt: option A) (alt : B) : Result A B :=
   | None => err alt
   end.
 
+(* Shim for reading all of stdin.  CakeML's TextIO.stdIn is not modeled
+   in EasyBakeCakeML, so we introduce it here as an inlined extraction
+   constant and build read_all_stdin from it. *)
+Definition stdin_stream : TextIO.instream. Admitted.
+Extract Inlined Constant stdin_stream => "TextIO.stdIn".
+
+Definition read_all_stdin : string := TextIO.inputAll stdin_stream.
+
 Local Open Scope map_scope.
 
-Definition cvm_front_end : unit := 
+Definition cvm_front_end : unit :=
   let comname := CommandLine.name tt in
   let comargs := CommandLine.arguments tt in
-  let args_spec := 
-    [log_level_arg_spec; manifest_arg_spec; manifest_file_arg_spec; asp_bin_arg_spec; request_arg_spec; request_file_arg_spec] in
+  (* ------------------------------------------------------------------ *
+   * Stdin mode: when the process is invoked with no CLI arguments (e.g.
+   * as a subprocess CVM for a bpar branch), the full ProtocolRunRequest
+   * JSON blob is read from stdin.  The manifest, asp_bin, and
+   * cvm_binary fields are embedded directly in that JSON blob (written
+   * by the parent CVM's handle_AM_request via the startup file, and
+   * reconstructed by parallel_vm_thread before exec).
+   * ------------------------------------------------------------------ *)
+  match comargs with
+  | [] =>
+    (* Stdin mode: the subprocess CVM receives a single inline bundle JSON
+       on stdin, containing all config it needs plus the ProtocolRunRequest.
+       Format: { "cvm_binary": "...", "manifest": {...}, "asp_bin": "...",
+                 "request": { <PRReq JSON object> } }
+       No startup file is read; everything comes from the bundle. *)
+    let bundle_str := read_all_stdin in
+    let runtime : Result string string := (
+      bundle_js    <- from_string bundle_str ;;
+      manifest_js  <- JSON_get_Object "manifest"   bundle_js ;;
+      asp_bin_val  <- JSON_get_string "asp_bin"    bundle_js ;;
+      cvm_bin_str  <- JSON_get_string "cvm_binary" bundle_js ;;
+      req_js       <- JSON_get_Object "request"    bundle_js ;;
+      manifest_val <- from_JSON manifest_js ;;
+      let am_manager_conf := mkAM_Man_Conf manifest_val asp_bin_val in
+      let cvm_binary_opt  := Some cvm_bin_str in
+      let req_str         := to_string req_js in
+      handle_AM_request am_manager_conf cvm_binary_opt req_str
+    ) in
+    match runtime with
+    | res resp_str => TextIO.printLn resp_str
+    | err e => TextIO.printLn_err ("Error in CVM Execution (stdin mode): " ++ e)
+    end
+  | _ =>
+  (* Normal CLI mode *)
+  let args_spec :=
+    [log_level_arg_spec; manifest_arg_spec; manifest_file_arg_spec;
+     asp_bin_arg_spec; request_arg_spec; request_file_arg_spec;
+     cvm_binary_arg_spec] in
   let runtime := (
     args_res <- gather_args_stub comname comargs args_spec ;;
     (* let _ := log Debug Debug (to_string args_res) in *)
@@ -148,10 +201,10 @@ Definition cvm_front_end : unit :=
     manifest_val <-
       match arg_found manifest_arg, arg_found manifest_file_arg with
       | true, true => err "Both manifest and manifest_file arguments were provided. Please provide only one."
-      | true, false => 
+      | true, false =>
         arg_val <- unwrap_opt (arg_value manifest_arg) "Manifest argument value was not found." ;;
         from_string arg_val
-      | false, true => 
+      | false, true =>
         arg_val <- unwrap_opt (arg_value manifest_file_arg) "Manifest file argument value was not found." ;;
         (* Read the file content if manifest_file is provided *)
         (* NOTE: This should probably be exception catching, but not done yet! *)
@@ -168,38 +221,44 @@ Definition cvm_front_end : unit :=
     _ <- debug_log ("ASP binary value: " ++ asp_bin_val) ;;
     (* Parse the manifest *)
     let am_manager_conf := (mkAM_Man_Conf manifest_val asp_bin_val) in
+    (* Extract the optional cvm_binary argument *)
+    let cvm_binary_opt :=
+      match args_res ![ "cvm_binary" ] with
+      | Some arg => arg_value arg
+      | None => None
+      end
+    in
     (* Getting the request argument *)
     _ <- debug_log "Parsing request arguments." ;;
     request_arg <- unwrap_opt (args_res ![ "req" ]) "Request argument is required." ;;
     request_file_arg <- unwrap_opt (args_res ![ "req_file" ]) "Request file argument is required." ;;
-    request_val <- 
+    request_str <-
       match arg_found request_arg, arg_found request_file_arg with
       | true, true => err "Both req and req_file arguments were provided. Please provide only one."
-      | true, false => 
+      | true, false =>
         _ <- debug_log "Using request argument value." ;;
-        (* If req is provided, parse it *)
+        (* If req is provided, use it directly *)
         arg_val <- unwrap_opt (arg_value request_arg) "Request argument value was not found." ;;
         _ <- debug_log ("Request argument value: " ++ arg_val) ;;
-        from_string arg_val
-      | false, true => 
+        res arg_val
+      | false, true =>
         _ <- debug_log "Using request file argument value." ;;
         (* If req_file is provided, read the file content *)
         arg_val <- unwrap_opt (arg_value request_file_arg) "Request file argument value was not found." ;;
         _ <- debug_log ("Request file argument value: " ++ arg_val) ;;
         (* NOTE: This should probably be exception catching, but not done yet! *)
-        (* Read the file content if req_file is provided *)
         let str_val := TextIO.readFile arg_val in
         _ <- debug_log ("Request file content: " ++ str_val) ;;
-        (* Convert the string to JSON *)
-        from_string str_val
+        res str_val
       | false, false => err "Request argument is required. Please provide either --req or --req_file."
       end ;;
     (* Actually process the request *)
-    handle_AM_request am_manager_conf request_val
+    handle_AM_request am_manager_conf cvm_binary_opt request_str
   ) in
   match runtime with
   | res resp_str => TextIO.printLn resp_str
   | err e => TextIO.printLn_err ("Error in CVM Execution: " ++ e)
+  end
   end.
 
 Local Close Scope map_scope.
