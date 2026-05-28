@@ -322,7 +322,7 @@ void ffiexec_process_io(const char *commandIn, const long clen, char *a, const l
     close(stdout_pipe[1]);
 
     // Execute the process (no shell involved — direct exec)
-    execl(process_path, process_path, (char *)NULL);
+    execl(process_path, process_path, "--stdin", (char *)NULL);
 
     // If execl returns, it failed.
     // Note: The error message is written to the child's stderr, which is not
@@ -565,7 +565,7 @@ void ffispawn_par_process(const char *commandIn, const long clen, char *a, const
     if (dup2(stdout_pipe[1], STDOUT_FILENO) < 0) _exit(127);
     close(stdout_pipe[1]);
 
-    execl(process_path, process_path, (char *)NULL);
+    execl(process_path, process_path, "--stdin", (char *)NULL);
     fprintf(stderr, "ffispawn_par_process: execl failed for '%s': %s\n",
             process_path, strerror(errno));
     _exit(127);

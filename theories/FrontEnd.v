@@ -33,6 +33,12 @@ Here is the usage we are aiming for:
 cvm [--manifest <manifest_json_value> | --manifest_file <manifest_file_path>.json] --asp_bin <asp_bin_file_location> [--req <req_json_value> | --req_file <req_file_path>.json]
 
 Where the manifest can be provided either as a JSON string or as a file path, and the request can also be provided either as a JSON string or as a file path.
+
+Alternatively, when invoked with the --stdin flag, the CVM reads a single inline
+bundle JSON ({ cvm_binary, manifest, asp_bin, request }) from standard input.
+This mode is used when a parent CVM spawns subprocess CVMs for parallel (bpar)
+terms. Without --stdin the CVM never reads stdin, so a normal interactive
+invocation cannot block waiting on the terminal.
 *)
 
 Definition manifest_arg_spec : arg_spec := {|
@@ -139,7 +145,18 @@ Definition unwrap_opt {A B} (opt: option A) (alt : B) : Result A B :=
 Definition stdin_stream : TextIO.instream. Admitted.
 Extract Inlined Constant stdin_stream => "TextIO.stdIn".
 
-Definition read_all_stdin : string := TextIO.inputAll stdin_stream.
+(* A thunk, NOT a value: a nullary Definition extracts to a top-level CakeML
+   `val`, which would run `inputAll stdin` eagerly at process startup — blocking
+   on a TTY for every invocation. Taking a unit argument keeps the read lazy so
+   stdin is only consumed when --stdin mode is actually selected. *)
+Definition read_all_stdin (_ : unit) : string := TextIO.inputAll stdin_stream.
+
+(* True iff [flag] appears in the argument list. Used to select --stdin mode. *)
+Fixpoint args_has_flag (flag : string) (l : list string) : bool :=
+  match l with
+  | [] => false
+  | a :: rest => if String.eqb a flag then true else args_has_flag flag rest
+  end.
 
 Local Open Scope map_scope.
 
@@ -147,21 +164,21 @@ Definition cvm_front_end : unit :=
   let comname := CommandLine.name tt in
   let comargs := CommandLine.arguments tt in
   (* ------------------------------------------------------------------ *
-   * Stdin mode: when the process is invoked with no CLI arguments (e.g.
-   * as a subprocess CVM for a bpar branch), the full ProtocolRunRequest
-   * JSON blob is read from stdin.  The manifest, asp_bin, and
-   * cvm_binary fields are embedded directly in that JSON blob (written
-   * by the parent CVM's handle_AM_request via the startup file, and
-   * reconstructed by parallel_vm_thread before exec).
+   * Stdin mode: selected explicitly with the --stdin flag (used when a
+   * parent CVM spawns this process as a subprocess for a bpar branch).
+   * The full ProtocolRunRequest JSON blob is read from stdin; the
+   * manifest, asp_bin, and cvm_binary fields are embedded directly in
+   * that JSON blob (written by the parent before exec). Without the flag
+   * the process uses normal CLI mode and never reads stdin, so an
+   * ordinary interactive invocation cannot block on the terminal.
    * ------------------------------------------------------------------ *)
-  match comargs with
-  | [] =>
+  if args_has_flag "--stdin" comargs then
     (* Stdin mode: the subprocess CVM receives a single inline bundle JSON
        on stdin, containing all config it needs plus the ProtocolRunRequest.
        Format: { "cvm_binary": "...", "manifest": {...}, "asp_bin": "...",
                  "request": { <PRReq JSON object> } }
        No startup file is read; everything comes from the bundle. *)
-    let bundle_str := read_all_stdin in
+    let bundle_str := read_all_stdin tt in
     let runtime : Result string string := (
       bundle_js    <- from_string bundle_str ;;
       manifest_js  <- JSON_get_Object "manifest"   bundle_js ;;
@@ -178,7 +195,7 @@ Definition cvm_front_end : unit :=
     | res resp_str => TextIO.printLn resp_str
     | err e => TextIO.printLn_err ("Error in CVM Execution (stdin mode): " ++ e)
     end
-  | _ =>
+  else
   (* Normal CLI mode *)
   let args_spec :=
     [log_level_arg_spec; manifest_arg_spec; manifest_file_arg_spec;
@@ -258,7 +275,6 @@ Definition cvm_front_end : unit :=
   match runtime with
   | res resp_str => TextIO.printLn resp_str
   | err e => TextIO.printLn_err ("Error in CVM Execution: " ++ e)
-  end
   end.
 
 Local Close Scope map_scope.
