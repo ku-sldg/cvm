@@ -151,33 +151,17 @@ inverse, thus allowing WRAPPED evidence to be recovered via appraisal *)
   | UNWRAP =>
       sc <- get_config ;;cvm
       let G := (session_context sc) in
-      let '(evc bits et) := cur_ev in
-      size_below_wrap' <- hoist_result (apply_to_evidence_below G (et_size G) [Trail_UNWRAP asp_id] et) ;;cvm
-      size_below_wrap <- hoist_result (size_below_wrap') ;;cvm
+      (* The size an UNWRAP must produce is the size of its *output* type:
+         [et_size] resolves the UNWRAP against the matching WRAP below via
+         [normalize_ev], erring when no such WRAP exists. This also makes the
+         check coincide exactly with well-formedness of the bundled output. *)
+      size_below_wrap <- hoist_result (et_size G (asp_evt p ps (get_et cur_ev))) ;;cvm
       (* we now need to just verify that we are the same size as what was below the wrap *)
       match (dec_eq (List.length rwev) size_below_wrap) with
-      | left _ => CVM_ret (evc rwev (asp_evt p ps et))
+      | left _ => CVM_ret (evc rwev (asp_evt p ps (get_et cur_ev)))
       | right _ =>
         CVM_fail (dispatch_error (Runtime err_str_unwrap_of_wrap_same_size))
       end
-      (* match r with
-      | asp_evt p' (asp_paramsC wrap_id _ _ _) et' =>
-        '(ev_arrow fwd _) <- get_asp_type wrap_id ;;cvm
-        match fwd with
-        | WRAP =>
-          (* we are an UNWRAP or a WRAP, so new size is the sizer of et' *)
-          match et_size G et' with
-          | errC e => fail (dispatch_error (Runtime e))
-          | resultC et'_size =>
-            if (eqb (length rwev) et'_size)
-            then (* we are the right inverse size! *)
-              ret (evc rwev (asp_evt p ps et))
-            else fail (dispatch_error (Runtime err_str_unwrap_of_wrap_same_size))
-          end
-        | _ => fail (dispatch_error (Runtime err_str_unwrap_only_wrap))
-        end
-      | _ => fail (dispatch_error (Runtime err_str_unwrap_only_wrap))
-      end *)
   end.
 Hint Unfold bundle_asp : cvm.
 
@@ -209,7 +193,11 @@ Fixpoint invoke_APPR' `{DecEq ASP_ID} (r : RawEv) (et : EvidenceT) (out_evt : Ev
   sc <- get_config ;;cvm
   let G := (session_context sc) in
   match et with
-  | mt_evt => CVM_ret mt_evc 
+  (* Appraising evidence that reduces to [mt] threads the accumulated output
+     [out_evt] (not the literal empty [mt_evc]), matching the reference
+     [appr_procedure']'s [mt_evt => res ev_out] case (copland-spec) and its other
+     cases here (cf. [nonce_evt] below, which also carries [evc r out_evt]). *)
+  | mt_evt => CVM_ret (evc r out_evt)
   | nonce_evt n' => invoke_ASP (evc r out_evt) check_nonce_params
   | asp_evt p' par et' =>
     let '(asp_paramsC asp_id args ) := par in
@@ -233,14 +221,11 @@ Fixpoint invoke_APPR' `{DecEq ASP_ID} (r : RawEv) (et : EvidenceT) (out_evt : Ev
         invoke_APPR' r'' et' (asp_evt (session_plc sc) dual_par out_evt)
       end
     | UNWRAP =>
-      (* to appraise an UNWRAP is to appraise whatever is below 
-      the UNWRAP and WRAP *)
-      e <- hoist_result (apply_to_evidence_below G (fun e => invoke_APPR' r e out_evt) [Trail_UNWRAP asp_id] et') ;;cvm
-      e 
-        (* e <- hoist_result (
-          apply_to_asp_under_wrap G asp_id (fun e => invoke_APPR' r e out_evt) et'
-        ) ;;
-        e *)
+      (* [invoke_APPR] hands this recursion the *canonical* evidence form, in
+         which every matched WRAP/UNWRAP pair has been cancelled by
+         [normalize_ev]: a surviving UNWRAP head is a stuck unwrap with nothing
+         to appraise (cf. [appr_procedure'], copland-spec). *)
+      CVM_fail (dispatch_error (Runtime err_str_asp_at_bottom_not_wrap))
     | EXTEND (exist _ n nlt) _ =>
       (* first we split, left for the appr of extended part, right for rest *)
       split_ev ;;cvm
@@ -258,13 +243,9 @@ Fixpoint invoke_APPR' `{DecEq ASP_ID} (r : RawEv) (et : EvidenceT) (out_evt : Ev
       (* ev' <- invoke_ASP (asp_paramsC appr_asp_id args targ_plc targ) ;;cvm
       put_ev ev' *)
     end
-  | left_evt et' =>
-    r <- hoist_result (apply_to_evidence_below G (fun e => invoke_APPR' r e out_evt) [Trail_LEFT] et') ;;cvm
-    r
-
-  | right_evt et' =>
-    r <- hoist_result (apply_to_evidence_below G (fun e => invoke_APPR' r e out_evt) [Trail_RIGHT] et') ;;cvm
-    r
+  (* canonical [left_evt]/[right_evt] are stuck projections (cf. UNWRAP above) *)
+  | left_evt _ => CVM_fail (dispatch_error (Runtime err_str_no_evidence_below))
+  | right_evt _ => CVM_fail (dispatch_error (Runtime err_str_no_evidence_below))
 
   | split_evt et1 et2 =>
     n1 <- hoist_result (et_size G et1) ;;cvm
@@ -290,8 +271,12 @@ Fixpoint invoke_APPR' `{DecEq ASP_ID} (r : RawEv) (et : EvidenceT) (out_evt : Ev
     end
   end.
 
+(* Appraise over the *canonical* (normalized) evidence structure, threading the
+   raw [get_et e] as the output accumulator -- matching the reference
+   [appr_procedure G p e := appr_procedure' G p (normalize_ev G e) e] (copland-spec). *)
 Definition invoke_APPR (e : Evidence) : CVM Evidence :=
-  invoke_APPR' (get_bits e) (get_et e) (get_et e).
+  sc <- get_config ;;cvm
+  invoke_APPR' (get_bits e) (normalize_ev (session_context sc) (get_et e)) (get_et e).
 Hint Unfold invoke_APPR : cvm.
 
 Definition nullEv : CVM Evidence :=

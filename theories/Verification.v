@@ -15,8 +15,10 @@
 
 *)
 From RocqCandy Require Import All.
-From CoplandSpec Require Import Term_Defs Event_System Attestation_Session.
+From CoplandSpec Require Import Term_Defs Event_System Attestation_Session
+  TypeSys TypeSys_Eval.
 From CVM Require Import Impl St Monad Cvm_Axioms.
+From Equations Require Import Equations.
 Local Open Scope list_scope.
 
 Lemma peel_n_rawev_result_spec : forall n ls ls1 ls2,
@@ -41,58 +43,28 @@ Lemma invoke_APPR_deterministic : forall G e sc st1 st2 st1' st2' res1 res2 r oe
   res1 = res2 /\ st_evid st1' = st_evid st2'.
 Proof.
   intros G.
-  induction e using (Evidence_subterm_path_Ind_special G);
-  simpl in *; intros;
+  induction e;
+  simpl in *; intros sc st1 st2 st1' st2' res1 res2 r oe HG Hst Hr1 Hr2;
   try (ux cvm (); intuition; repeat find_injection; eauto; fail).
   - ff with (ux cvm ()).
   - ux cvm ();
-    target_break_match H3; ff;
+    target_break_match Hr1; ff;
     try (Control.enter (fun () =>
     match! goal with
     | [ h1 : invoke_APPR' _ ?_e _ _ _ = _,
         h2 : invoke_APPR' _ ?_e _ _ _ = _,
         ih : context[invoke_APPR' _ ?_e _ _ _ = _ -> _] |- _ ] =>
-      (* let h1 := Control.hyp h1 in *)
       let h2 := Control.hyp h2 in
       let ih := Control.hyp ih in
       eapply $ih in $h1; try (eapply $h2); ff
     end)).
   - cvm_monad_unfold;
-    target_break_match H3;
-    repeat find_injection;
-    repeat find_rewrite;
-    subst; try (simple congruence 3);
-    eauto.
-    unpack_atebs.
-    find_eapply_lem_hyp H0; ff.
-  - cvm_monad_unfold;
-    target_break_match H2;
-    repeat find_injection;
-    repeat find_rewrite;
-    subst; try (simple congruence 3);
-    eauto.
-  - cvm_monad_unfold;
-    target_break_match H2;
+    target_break_match Hr1;
     repeat find_injection;
     repeat find_rewrite;
     subst; try (simple congruence 3);
     eauto;
-    unpack_atebs;
-    find_eapply_lem_hyp H; ff.
-  - cvm_monad_unfold;
-    target_break_match H2;
-    repeat find_injection;
-    repeat find_rewrite;
-    subst; try (simple congruence 3);
-    eauto; unpack_atebs. 
-    find_eapply_lem_hyp H; ff.
-  - cvm_monad_unfold;
-    target_break_match H1;
-    repeat find_injection;
-    repeat find_rewrite;
-    subst; try (simple congruence 3);
-    eauto;
-    try (target_break_match H2);
+    try (target_break_match Hr2);
     repeat (match! goal with
       | [ h1 : invoke_APPR' _ ?_e _ _ _ = _,
           h2 : invoke_APPR' _ ?_e _ _ _ = _,
@@ -110,67 +82,32 @@ Theorem invoke_APPR_deterministic_Evidence : forall G et st1 st2 r1 r2 st1' st2'
   r1 = r2.
 Proof.
   intros G.
-  induction et using (Evidence_subterm_path_Ind_special G);
-  intros; simpl in *; subst; cvm_monad_unfold.
-  - ff.
-  - target_break_match H0.
-  - target_break_match H2;
+  induction et;
+  intros st1 st2 r1 r2 st1' st2' r sc eo HG Hr1 Hr2;
+  simpl in *; subst; cvm_monad_unfold;
+  try (repeat find_injection; reflexivity).
+  - target_break_match Hr1.
+  - target_break_match Hr1;
     repeat find_injection;
     repeat find_rewrite;
     subst; try (simple congruence 3);
     eauto;
-    try (target_break_match H3);
+    try (target_break_match Hr2);
     Control.enter (fun () =>
-    match! goal with
+    repeat (match! goal with
     | [ h1 : invoke_APPR' _ ?_e _ _ _ = _,
         h2 : invoke_APPR' _ ?_e _ _ _ = _,
         ih : context[invoke_APPR' _ ?_e _ _ _ = _ -> _] |- _ ] =>
       let h2 := Control.hyp h2 in
       let ih := Control.hyp ih in
       eapply $ih in $h1; try (eapply $h2); ff
-    end).
-  - target_break_match H2;
+    end)).
+  - target_break_match Hr1;
     repeat find_injection;
     repeat find_rewrite;
     subst; try (simple congruence 3);
     eauto;
-    try (target_break_match H3).
-    unpack_atebs; ff with (a).
-  - target_break_match H2;
-    repeat find_injection;
-    repeat find_rewrite;
-    subst; try (simple congruence 3);
-    eauto;
-    try (target_break_match H3);
-    Control.enter (fun () =>
-    match! goal with
-    | [ h1 : invoke_APPR' _ ?_e _ _ _ = _,
-        h2 : invoke_APPR' _ ?_e _ _ _ = _,
-        ih : context[invoke_APPR' _ ?_e _ _ _ = _ -> _] |- _ ] =>
-      let h2 := Control.hyp h2 in
-      let ih := Control.hyp ih in
-      eapply $ih in $h1; try (eapply $h2); ff
-    end).
-  - target_break_match H2;
-    repeat find_injection;
-    repeat find_rewrite;
-    subst; try (simple congruence 3);
-    eauto;
-    try (target_break_match H3);
-    unpack_atebs; ff with (a).
-  - target_break_match H2;
-    repeat find_injection;
-    repeat find_rewrite;
-    subst; try (simple congruence 3);
-    eauto;
-    try (target_break_match H3);
-    unpack_atebs; ff with (a).
-  - target_break_match H0;
-    repeat find_injection;
-    repeat find_rewrite;
-    subst; try (simple congruence 3);
-    eauto;
-    try (target_break_match H1);
+    try (target_break_match Hr2);
     Control.enter (fun () =>
     repeat (match! goal with
     | [ h1 : invoke_APPR' _ ?_e _ _ _ = _,
@@ -209,14 +146,11 @@ Lemma appr_events'_errs_deterministic : forall G p e e' i1 e1,
   forall i2, appr_events' G p e e' i2 = err e1.
 Proof.
   intros G.
-  induction e using (Evidence_subterm_path_Ind_special G);
+  induction e;
   intros; simpl in *; ff with u, (a);
   try (find_eapply_lem_hyp IHe; ff; fail);
   try (find_eapply_lem_hyp IHe1; ff);
-  try (find_eapply_lem_hyp IHe2; ff);
-  try (ateb_errs_same; eauto; fail);
-  try (ateb_diff);
-  try (ateb_same); ff with (a).
+  try (find_eapply_lem_hyp IHe2; ff).
 Qed.
 
 Lemma asp_events_errs_deterministic : forall G t p e i1 i2 e1 e2,
@@ -325,7 +259,7 @@ Lemma invoke_APPR'_spans : forall G' et r e' sc c i st eo,
   st_evid c = st_evid st + i.
 Proof.
   intros G'.
-  induction et using (Evidence_subterm_path_Ind_special G');
+  induction et;
   ff with u, (ux cvm ()), a;
   repeat (match! goal with
   | [ h : invoke_APPR' _ ?_e _ _ _ = _,
@@ -333,7 +267,7 @@ Proof.
     let ih := Control.hyp ih in
     eapply $ih in $h; ff with l;
     try lia
-  end); try (ateb_same); ff with a.
+  end).
 Qed.
 
 Inductive et_same_asps : EvidenceT -> EvidenceT -> Prop :=
@@ -395,75 +329,61 @@ Proof.
 Qed.
 Local Hint Resolve et_same_asps_symm : et_same_asps_db.
 
-Lemma ev_subterm_path_et_same_asps : forall G e1 e2 e1' e2' l,
+(* [normalize_ev] depends only on the ASP structure (aids) and [G], not on the
+   places / args / nonce-ids that [et_same_asps] abstracts over, so it preserves
+   [et_same_asps]. Needed because [appr_procedure] now normalizes its structural
+   argument before recursing. *)
+Lemma et_same_asps_normalize_ev : forall G e1 e2,
   et_same_asps e1 e2 ->
-  Evidence_Subterm_path G e1' l e1 ->
-  Evidence_Subterm_path G e2' l e2 ->
-  et_same_asps e1' e2'.
+  et_same_asps (normalize_ev G e1) (normalize_ev G e2).
 Proof.
-  intros.
-  prep_induction H.
-  induction H; intros; simpl in *;
-  try (invc H0; invc H1; eauto using et_same_asps; fail).
-  - invc H0; invc H1; try congruence; eauto using et_same_asps.
-  - invc H1; invc H2; try congruence; eauto using et_same_asps.
+  intros G e1 e2 H.
+  induction H; ltac1:(simp normalize_ev); eauto using et_same_asps.
+  - (* asp: same aid; the normalized inner drives the same branch on both sides *)
+    destruct (normalize_ev G e1) eqn:E1; destruct (normalize_ev G e2) eqn:E2;
+    inversion IHet_same_asps; subst; simpl in *;
+    eauto using et_same_asps; ff with u, a; eauto using et_same_asps.
+  - (* left projection *)
+    destruct (normalize_ev G e1) eqn:E1; destruct (normalize_ev G e2) eqn:E2;
+    inversion IHet_same_asps; subst; simpl in *;
+    eauto using et_same_asps.
+  - (* right projection *)
+    destruct (normalize_ev G e1) eqn:E1; destruct (normalize_ev G e2) eqn:E2;
+    inversion IHet_same_asps; subst; simpl in *;
+    eauto using et_same_asps.
 Qed.
-Local Hint Resolve ev_subterm_path_et_same_asps : et_same_asps_db.
+Local Hint Resolve et_same_asps_normalize_ev : et_same_asps_db.
 
-Lemma et_same_asps_ateb_errs_det : forall {A} G (f : _ -> A) e1 e2 l r1 r2,
+(* [et_size_canon] only consults ASP ids (via [asp_types G]) and the evidence
+   shape, both preserved by [et_same_asps]. *)
+Lemma et_size_canon_same_asps : forall G e1 e2,
   et_same_asps e1 e2 ->
-  apply_to_evidence_below G f l e1 = err r1 ->
-  apply_to_evidence_below G f l e2 = err r2 ->
-  r1 = r2.
+  et_size_canon G e1 = et_size_canon G e2.
 Proof.
-  induction e1; simpl in *; ff;
-  try (invc H; simpl in *; ff; fail).
-Qed.
-
-Lemma et_same_asps_ateb_errs_only : forall {A} G (f : _ -> A) e1 e2 l r1 r2,
-  et_same_asps e1 e2 ->
-  apply_to_evidence_below G f l e1 = err r1 ->
-  apply_to_evidence_below G f l e2 = res r2 ->
-  False.
-Proof.
-  induction e1; simpl in *; ff;
-  try (invc H; simpl in *; ff; fail).
+  intros G e1 e2 H.
+  induction H; try reflexivity.
+  - (* asp: same aid, so the type-signature lookup agrees; only EXTEND recurses *)
+    rewrite et_size_canon_asp_unfold.
+    rewrite et_size_canon_asp_unfold.
+    rewrite IHet_same_asps.
+    reflexivity.
+  - (* split *)
+    rewrite et_size_canon_split_unfold.
+    rewrite et_size_canon_split_unfold.
+    rewrite IHet_same_asps1.
+    rewrite IHet_same_asps2.
+    reflexivity.
 Qed.
 
 Lemma et_same_asps_impl_same_size : forall G e1 e2,
   et_same_asps e1 e2 ->
   et_size G e1 = et_size G e2.
 Proof.
-  intros G.
-  induction e1 using (Evidence_subterm_path_Ind_special G);
-  intros; simpl in *; ff; eauto;
-  try (invc H; ff with u, a; fail);
-  try (invc H1; ff with u, a; fail).
-  - invc H1; ff with u, a.
-    * unpack_atebs; ff with a; eapply H0; ff with a;
-      eapply ev_subterm_path_et_same_asps; ff.
-    * find_eapply_lem_hyp @et_same_asps_ateb_errs_only; ff;
-      eauto with et_same_asps_db.
-    * find_eapply_lem_hyp @et_same_asps_ateb_errs_only; ff;
-      eauto with et_same_asps_db.
-    * f_equal; eapply et_same_asps_ateb_errs_det; ff with a.
-  - invc H0; ff with u, a.
-  - invc H0; ff with u, a.
-    * unpack_atebs; ff with a; eapply H; ff with a;
-      eapply ev_subterm_path_et_same_asps; ff.
-    * find_eapply_lem_hyp @et_same_asps_ateb_errs_only; ff;
-      eauto with et_same_asps_db.
-    * find_eapply_lem_hyp @et_same_asps_ateb_errs_only; ff;
-      eauto with et_same_asps_db.
-    * f_equal; eapply et_same_asps_ateb_errs_det; ff.
-  - invc H0; ff with u, a.
-    * unpack_atebs; ff with a; eapply H; ff with a;
-      eapply ev_subterm_path_et_same_asps; ff.
-    * find_eapply_lem_hyp @et_same_asps_ateb_errs_only; ff;
-      eauto with et_same_asps_db.
-    * find_eapply_lem_hyp @et_same_asps_ateb_errs_only; ff;
-      eauto with et_same_asps_db.
-    * f_equal; eapply et_same_asps_ateb_errs_det; ff with a.
+  intros G e1 e2 H.
+  unfold et_size.
+  apply et_size_canon_same_asps.
+  apply et_same_asps_normalize_ev.
+  exact H.
 Qed.
 Local Hint Resolve et_same_asps_impl_same_size : et_same_asps_db.
 
@@ -496,34 +416,31 @@ Lemma et_same_asps_appr_procedure : forall G e1 e1' e2 e2' p1 p2 e1o e2o,
   et_same_asps e1' e2'.
 Proof.
   intros G.
-  induction e1 using (Evidence_subterm_path_Ind_special G);
-  intros; simpl in *; cvm_monad_unfold.
-  - invc H; simpl in *; ff; econstructor; eauto.
-  - invc H; simpl in *; ff; econstructor; eauto.
-  - inv H1; simpl in *; ff.
-    * econstructor; eauto.
-    * eapply IHe1 in H4; ff; econstructor; eauto.
-    * ff with u, a.
-      econstructor; eauto.
-      econstructor; eauto.
-  - inv H1; simpl in *; ff with u, a;
-    unpack_atebs.
-    eapply H0 in Hf; try (eapply Hf0); ff.
-    eapply ev_subterm_path_et_same_asps; ff.
-  - inv H1; simpl in *; ff.
-  - inv H0; simpl in *; ff with u, a.
-    unpack_atebs.
-    eapply H in Hf; try (eapply Hf0); ff.
-    eapply ev_subterm_path_et_same_asps; ff.
-  - inv H0; simpl in *; ff with u, a;
-    unpack_atebs.
-    eapply H in Hf; try (eapply Hf0); ff.
-    eapply ev_subterm_path_et_same_asps; ff.
-  - inv H; simpl in *; ff with u, a.
-    eapply IHe1_1 in Heq0; try (eapply Heq3); ff;
-    eauto using et_same_asps.
+  induction e1; intros e1' e2 e2' p1 p2 e1o e2o Hsame Hsameo Hr1 Hr2;
+  invc Hsame; simpl in *; cvm_monad_unfold; ff with u, a;
+  try (econstructor; eauto using et_same_asps; fail).
+  (* WRAP: recurse under the cancelling dual, with the dual-extended output
+     accumulators still related *)
+  eapply IHe1 > [ exact H3 | | exact Hr1 | exact Hr2 ].
+  econstructor; exact Hsameo.
 Qed.
 Local Hint Resolve et_same_asps_appr_procedure : et_same_asps_db.
+
+(* [appr_procedure] (which normalizes its structural argument) preserves
+   [et_same_asps], lifting [et_same_asps_appr_procedure] over [appr_procedure']. *)
+Lemma et_same_asps_appr_procedure_full : forall G e1 e1' e2 e2' p1 p2,
+  et_same_asps e1 e2 ->
+  appr_procedure G p1 e1 = res e1' ->
+  appr_procedure G p2 e2 = res e2' ->
+  et_same_asps e1' e2'.
+Proof.
+  intros G e1 e1' e2 e2' p1 p2 Hsame H1 H2.
+  unfold appr_procedure in *.
+  eapply et_same_asps_appr_procedure >
+    [ eapply et_same_asps_normalize_ev; exact Hsame
+    | exact Hsame | exact H1 | exact H2 ].
+Qed.
+Local Hint Resolve et_same_asps_appr_procedure_full : et_same_asps_db.
 
 Lemma et_same_asps_eval_same_asps : forall G t p1 p2 e1 e1' e2 e2',
   et_same_asps e1 e2 ->
@@ -533,7 +450,7 @@ Lemma et_same_asps_eval_same_asps : forall G t p1 p2 e1 e1' e2 e2',
 Proof.
   induction t; simpl in *; intuition; eauto.
   - destruct a; simpl in *; ff; eauto using et_same_asps.
-    eapply et_same_asps_appr_procedure; eauto.
+    eapply et_same_asps_appr_procedure_full; eauto.
   - ff with u, a.
   - ff with u, a.
     repeat (match! goal with
@@ -583,13 +500,8 @@ Lemma et_same_asps_impl_appr_events_size_same : forall G e1 e2 n1 n2,
   n1 = n2.
 Proof.
   intros G.
-  induction e1 using (Evidence_subterm_path_Ind_special G);
-  intros; simpl in *; ff with u, a;
-  try (invc H; ff; fail);
-  try (invc H1; ff with u, a; fail).
-  - invc H1; ff with u, a; unpack_atebs; ff with (eauto with et_same_asps_db).
-  - invc H0; ff with u, a; unpack_atebs; ff with (eauto with et_same_asps_db).
-  - invc H0; ff with u, a; unpack_atebs; ff with (eauto with et_same_asps_db).
+  induction e1; intros; simpl in *; ff with u, a;
+  try (invc H; ff with u, a; fail).
   - invc H; ff with u, a.
     find_eapply_lem_hyp IHe1_1; try (reflexivity); ff.
 Qed.
@@ -610,7 +522,8 @@ Proof.
   generalizeEverythingElse t.
   induction t; simpl in *; intuition; ff with u, a;
   eauto with et_same_asps_db.
-  - eapply et_same_asps_impl_appr_events_size_same; eauto.
+  - eapply et_same_asps_impl_appr_events_size_same >
+    [ eapply et_same_asps_normalize_ev; eassumption | eassumption | eassumption ].
   - simpl in *; ff with u, a;
     repeat (match! goal with
     | [ h1 : events_size _ ?_p1 ?_e1 ?_t1 = _,
@@ -678,31 +591,17 @@ Theorem invoke_APPR'_evidence : forall G et st r sc st' e' e eo,
   get_et e' = e.
 Proof.
   intros G.
-  induction et using (Evidence_subterm_path_Ind_special G);
+  induction et;
   intuition; simpl in *.
   - ff with (cvm_monad_unfold).
   - cvm_monad_unfold; ff; cvm_monad_unfold; ff.
   - cvm_monad_unfold; ff; cvm_monad_unfold; ff with u, a.
     cvm_monad_unfold; ff.
-    * find_eapply_lem_hyp IHet; ff; simpl in *; ff.
-    * find_eapply_lem_hyp IHet; ff; simpl in *; ff.
-    * find_eapply_lem_hyp IHet; ff; simpl in *; ff.
-    * find_eapply_lem_hyp IHet; ff; simpl in *; ff.
-    * find_eapply_lem_hyp IHet; ff; simpl in *; ff.
-  - cvm_monad_unfold; ff; cvm_monad_unfold; ff with u;
-    cvm_monad_unfold; ff with u.
-    * ateb_same; find_eapply_lem_hyp H0; ff; ff.
-  - cvm_monad_unfold; ff; cvm_monad_unfold; ff with u;
-    cvm_monad_unfold; ff with u.
-  - cvm_monad_unfold; ff; cvm_monad_unfold; ff with u;
-    cvm_monad_unfold; ff with u;
-    ateb_same; find_eapply_lem_hyp H; ff; ff.
-  - cvm_monad_unfold; ff; cvm_monad_unfold; ff with u;
-    cvm_monad_unfold; ff with u;
-    ateb_same; find_eapply_lem_hyp H; ff; ff.
+    all: find_eapply_lem_hyp IHet; ff; simpl in *; ff.
+  - cvm_monad_unfold; ff.
+  - cvm_monad_unfold; ff.
   - cvm_monad_unfold; ff; cvm_monad_unfold; ff with u;
     cvm_monad_unfold; ff with u, a.
-    
     repeat (match! goal with
     | [ h1 : invoke_APPR' _ ?_e ?_o _ _ = _,
         h2 : appr_procedure' _ _ ?_e ?_o = _,
@@ -760,8 +659,8 @@ Lemma cvm_spans: forall t st e st' sc i e',
 Proof.
   induction t; simpl in *; intuition.
   - cvm_monad_unfold; ff.
-    find_eapply_lem_hyp invoke_APPR'_spans; ff. 
-  - cvm_monad_unfold; ff with u; 
+    find_eapply_lem_hyp invoke_APPR'_spans; ff.
+  - cvm_monad_unfold; ff with u;
     find_eapply_lem_hyp events_size_plc_irrel;
     try (eapply Heq5); ff with l.
   - cvm_monad_unfold; ff with u.
@@ -786,13 +685,31 @@ Proof.
     find_eapply_lem_hyp IHt1; ff with l.
 Qed.
 
+(* Read the size equation off a [wf_Evidence] witness. *)
+Lemma wf_Evidence_inv : forall G r et,
+  wf_Evidence G (evc r et) ->
+  et_size G et = res (List.length r).
+Proof.
+  intros G r et H.
+  invc H.
+  assumption.
+Qed.
+
 Lemma wf_Evidence_split : forall G r1 r2 et1 et2,
   wf_Evidence G (evc r1 et1) ->
   wf_Evidence G (evc r2 et2) ->
   wf_Evidence G (evc (r1 ++ r2) (split_evt et1 et2)).
 Proof.
-  intros; invc H; invc H0; econstructor; ff;
-  rewrite length_app; ff.
+  intros G r1 r2 et1 et2 Hwf1 Hwf2.
+  eapply wf_Evidence_inv in Hwf1.
+  eapply wf_Evidence_inv in Hwf2.
+  econstructor.
+  - rewrite length_app.
+    reflexivity.
+  - rewrite et_size_split.
+    rewrite Hwf1.
+    rewrite Hwf2.
+    reflexivity.
 Qed.
 Local Hint Resolve wf_Evidence_split : wf_Evidence.
 
@@ -800,16 +717,21 @@ Lemma wf_Evidence_impl_et_size_res : forall G e,
   wf_Evidence G e ->
   exists n, et_size G (get_et e) = res n.
 Proof.
-  destruct e; 
-  induction e; simpl in *; intros;
-  invc H; simpl in *; eauto.
+  intros G e H.
+  destruct e as [r et].
+  eapply wf_Evidence_inv in H.
+  exists (List.length r).
+  exact H.
 Qed.
 
 Lemma wf_Evidence_mt_evc : forall G,
   wf_Evidence G mt_evc.
 Proof.
-  unfold mt_evc; econstructor; simpl in *; eauto.
-  Unshelve. eapply 0.
+  intros G.
+  unfold mt_evc.
+  econstructor.
+  - reflexivity.
+  - exact (et_size_mt G).
 Qed.
 
 Fixpoint meta_machinery_pad_n (n : nat) (e : RawEv) : RawEv :=
@@ -828,126 +750,294 @@ Lemma wf_Evidence_exists : forall G e n,
   et_size G e = res n ->
   exists r, wf_Evidence G (evc r e).
 Proof.
-  intros G; induction e using (Evidence_subterm_path_Ind_special G); ff;
-  try (exists (meta_machinery_pad_n n nil); econstructor; eauto;
-    ff with u;
-    rewrite meta_machinery_pad_n_size; ff; fail).
-  - eexists; eapply wf_Evidence_mt_evc. 
-  - exists [passed_bs]; econstructor; eauto.
+  intros G e n Hsz.
+  exists (meta_machinery_pad_n n nil).
+  econstructor.
+  - reflexivity.
+  - rewrite Hsz.
+    rewrite meta_machinery_pad_n_size.
+    simpl.
+    f_equal.
+    lia.
 Qed.
 
-Lemma wf_Evidence_asp_unfold_more : forall G r p e n a a1,
-  wf_Evidence G (evc r (asp_evt p (asp_paramsC a a1) e)) ->
-  et_size G e = res n ->
-  forall sig n' n'lt attrs,
-  (asp_types G) ![ a ] = Some (ev_arrow (EXTEND (exist _ n' n'lt) sig) attrs) ->
-  et_size G (asp_evt p (asp_paramsC a a1) e) = res (n' + n).
+(* Normalizing the evidence type preserves wf ([et_size] is normalize-invariant). *)
+Lemma wf_Evidence_normalize_ev : forall G r et,
+  wf_Evidence G (evc r et) ->
+  wf_Evidence G (evc r (normalize_ev G et)).
 Proof.
-  intros.
-  prep_induction H.
-  induction H; ff with u.
+  intros G r et Hwf.
+  eapply wf_Evidence_inv in Hwf.
+  econstructor.
+  - reflexivity.
+  - rewrite <- et_size_normalize.
+    exact Hwf.
 Qed.
 
-Lemma wf_Evidence_split_unfold : forall G r e1 e2,
-  wf_Evidence G (evc r (split_evt e1 e2)) ->
-  (exists r1, wf_Evidence G (evc r1 e1)) /\ (exists r2, wf_Evidence G (evc r2 e2)).
+(* Every branch of [bundle_asp] checks the length of the raw evidence it bundles
+   against the size its output type prescribes, so its outputs are wf. *)
+Lemma wf_Evidence_bundle_asp : forall sc p rwev cur_ev ps st e' st',
+  wf_Evidence (session_context sc) cur_ev ->
+  bundle_asp p rwev cur_ev ps sc st = (res e', st') ->
+  wf_Evidence (session_context sc) e'.
 Proof.
-  intros.
-  prep_induction H;
-  induction H; ff with u;
-  eapply wf_Evidence_exists; ff.
+  intros sc p rwev cur_ev ps st e' st' Hwf Hbun.
+  destruct ps as [asp_id args].
+  destruct cur_ev as [bits et0].
+  eapply wf_Evidence_inv in Hwf.
+  cbv beta iota zeta delta [bundle_asp get_asp_type get_config hoist_result
+    hoist_option CVM_bind CVM_ret CVM_fail CVM_ask get_et ret] in Hbun.
+  destruct ((asp_types (session_context sc)) ![ asp_id ]) as [ [fwd attrs] | ] eqn:Hlk >
+  [ | inversion Hbun ].
+  destruct fwd as [ [n nlt] | [n nlt] | | [n nlt] isig ].
+  - (* REPLACE: length checked against the REPLACE size *)
+    destruct (DecEq.dec_eq (List.length rwev) n) as [Hlen | Hne] > [ | inversion Hbun ].
+    inversion Hbun; subst.
+    econstructor.
+    + reflexivity.
+    + erewrite et_size_asp_replace > [ reflexivity | exact Hlk ].
+  - (* WRAP: same shape as REPLACE *)
+    destruct (DecEq.dec_eq (List.length rwev) n) as [Hlen | Hne] > [ | inversion Hbun ].
+    inversion Hbun; subst.
+    econstructor.
+    + reflexivity.
+    + erewrite et_size_asp_wrap > [ reflexivity | exact Hlk ].
+  - (* UNWRAP: length checked against [et_size] of the bundled output type *)
+    destruct (et_size (session_context sc) (asp_evt p (asp_paramsC asp_id args) et0))
+      as [size | ] eqn:Hsz > [ | inversion Hbun ].
+    destruct (DecEq.dec_eq (List.length rwev) size) as [Hlen | Hne] > [ | inversion Hbun ].
+    inversion Hbun; subst.
+    econstructor.
+    + reflexivity.
+    + exact Hsz.
+  - (* EXTEND: the new bits extend the (wf) current bundle *)
+    destruct (DecEq.dec_eq (List.length rwev) n) as [Hlen | Hne] > [ | inversion Hbun ].
+    inversion Hbun; subst.
+    econstructor.
+    + rewrite length_app.
+      reflexivity.
+    + erewrite et_size_asp_extend > [ | exact Hlk ].
+      rewrite Hwf.
+      reflexivity.
 Qed.
 
-Lemma wf_Evidence_asp_unpack : forall G r p e a0 a1,
-  wf_Evidence G (evc r (asp_evt p (asp_paramsC a0 a1) e)) ->
-  forall in_sig n n' nlt attrs,
-  (asp_types G) ![ a0 ] = Some (ev_arrow (EXTEND (exist _ n nlt) in_sig) attrs) ->
-  et_size G e = res n' ->
-  List.length r = n + n'.
+(* [invoke_ASP] = tag + external call + [bundle_asp]; wf flows through the
+   bundling checks regardless of what raw evidence the ASP callback returns. *)
+Lemma wf_Evidence_invoke_ASP : forall sc e ps st e' st',
+  wf_Evidence (session_context sc) e ->
+  invoke_ASP e ps sc st = (res e', st') ->
+  wf_Evidence (session_context sc) e'.
 Proof.
-  intros.
-  prep_induction H; ff; invc H; ff.
+  intros sc e ps st e' st' Hwf Hrun.
+  cbv beta iota zeta delta [invoke_ASP get_pl tag_ASP inc_id add_trace get_trace
+    get_evid get_st put_trace do_asp get_config CVM_bind CVM_ret CVM_fail
+    CVM_ask CVM_put CVM_get ret] in Hrun.
+  destruct (asp_cb sc ps (get_bits e)) as [rawev | derr] eqn:Hcb > [ | inversion Hrun ].
+  match! goal with
+  | [ _h : context [ bundle_asp ?p' ?rw ?ev ?ps' ?cf ?stx ] |- _ ] =>
+    destruct (bundle_asp $p' $rw $ev $ps' $cf $stx) as [bres stb] eqn:Hbun
+  end.
+  destruct bres as [outev | berr] > [ | inversion Hrun ].
+  inversion Hrun; subst.
+  eapply wf_Evidence_bundle_asp > [ exact Hwf | exact Hbun ].
 Qed.
 
-Lemma wf_Evidence_invoke_APPR : forall G et r eo st e' st' sc,
-  G = session_context sc ->
+(* CVM appraisal preserves wf. [invoke_APPR'] receives the *canonical*
+   structural type [et] ([invoke_APPR] normalizes before calling) plus the
+   original output-accumulator type [eo] over the same raw bits. Canonicity
+   makes the stuck shapes (left/right projections, bare UNWRAP) vacuous --
+   [et_size_canon] errs on them, contradicting [wf_Evidence] -- so the
+   remaining recursion is purely structural. *)
+Lemma wf_Evidence_invoke_APPR : forall sc et r eo st e' st',
+  normalize_ev (session_context sc) et = et ->
   wf_Evidence (session_context sc) (evc r et) ->
   wf_Evidence (session_context sc) (evc r eo) ->
   invoke_APPR' r et eo sc st = (res e', st') ->
   wf_Evidence (session_context sc) e'.
 Proof.
-  intros G.
-  induction et using (Evidence_subterm_path_Ind_special G); intuition.
-  - ff; cvm_monad_unfold; ff; eapply wf_Evidence_mt_evc.
-  - ff; cvm_monad_unfold; ff;
-    repeat (match! goal with
-    | [ h : wf_Evidence _ _ |- _ ] => 
-      invc $h; ff
-    end); try (econstructor; ff; repeat (rewrite length_app); ff with u;
-    try (ateb_diff); fail).
-
-  - simpl in *; ff with u; cvm_monad_unfold; ff.
-    all: try (ff with u;
-      repeat (match! goal with
-      | [ h : wf_Evidence _ _ |- _ ] => invc $h; ff
-      end);
-      ff with u;
-      try (find_eapply_lem_hyp peel_n_rawev_result_spec; ff with u);
-      try (match! goal with
-      | [ h : invoke_APPR' _ ?_t _ _ _ = _, 
-          ih : context[invoke_APPR' _ ?_t _ _ _ = _ -> _] |- _ ] =>
-        let ihv := Control.hyp ih in
-        eapply $ihv in $h > [ eauto | reflexivity | | ]; clear $ih
-      end);
-      econstructor; repeat (match! goal with
-      | [ h : wf_Evidence _ _ |- _ ] => invc $h; ff with u
-      end);
-      repeat (rewrite length_app in *); ff with u, l; try (f_equal); lia).
-  - repeat (cvm_monad_unfold; ff).
-    unpack_atebs; ff with a.
-    eapply H0 in H4; ff.
-    invc H2; ff with u; unpack_atebs.
-    eapply Evidence_Subterm_path_same in Hesp;
-    try (eapply Hesp0); subst.
-    econstructor; ff.
-  - repeat (cvm_monad_unfold; ff).
-  - repeat (cvm_monad_unfold; ff).
-    unpack_atebs; ff with a;
-    eapply H in H3; ff.
-    invc H1; ff with u; unpack_atebs.
-    eapply Evidence_Subterm_path_same in Hesp;
-    try (eapply Hesp0); subst.
-    econstructor; ff.
-  - repeat (cvm_monad_unfold; ff);
-    unpack_atebs; ff with a.
-    eapply H in H3; ff.
-    invc H1; ff with u; unpack_atebs.
-    eapply Evidence_Subterm_path_same in Hesp;
-    try (eapply Hesp0); subst.
-    econstructor; ff.
-  - simpl in *; ff; cvm_monad_unfold; ff.
-    repeat (find_eapply_lem_hyp peel_n_rawev_result_spec); ff;
-    repeat (rewrite app_nil_r in *); ff.
-    eapply IHet1 in Heq1; ff.
-    * eapply IHet2 in Heq6; ff;
-      econstructor; repeat (rewrite length_app in *); ff with u;
-      repeat (match! goal with
-      | [ h : wf_Evidence _ _ |- _ ] => invc $h; ff
-      end); ff with u;
-      repeat (rewrite length_app in *); ff;
-      repeat (find_eapply_lem_hyp equiv_EvidenceT_impl_et_size_same); ff.
-    * econstructor; repeat (rewrite length_app in *); ff with u;
-      repeat (match! goal with
-      | [ h : wf_Evidence _ _ |- _ ] => invc $h; ff
-      end); ff with u;
-      repeat (rewrite length_app in *); ff;
-      repeat (find_eapply_lem_hyp equiv_EvidenceT_impl_et_size_same); ff.
-    * econstructor; repeat (rewrite length_app in *); ff with u;
-      repeat (match! goal with
-      | [ h : wf_Evidence _ _ |- _ ] => invc $h; ff
-      end); ff with u;
-      repeat (rewrite length_app in *); ff;
-      repeat (find_eapply_lem_hyp equiv_EvidenceT_impl_et_size_same); ff.
+  intros sc et.
+  induction et as [ | nid | p par et' IH | et' IH | et' IH | et1 IHet1 et2 IHet2 ];
+  intros r eo st e' st' Hcanon Hwf Hwfo Hrun.
+  - (* mt_evt: returns the accumulated output evidence unchanged *)
+    cbn [invoke_APPR'] in Hrun.
+    cbv beta iota zeta delta [get_config CVM_bind CVM_ret CVM_ask ret] in Hrun.
+    inversion Hrun; subst.
+    exact Hwfo.
+  - (* nonce_evt: one check-nonce ASP over the accumulated output *)
+    cbn [invoke_APPR'] in Hrun.
+    cbv beta iota zeta delta [get_config CVM_bind CVM_ret CVM_ask ret] in Hrun.
+    eapply wf_Evidence_invoke_ASP > [ exact Hwfo | exact Hrun ].
+  - (* asp_evt *)
+    destruct par as [asp_id args].
+    (* size equation for the canonical asp type: prunes no-sig and UNWRAP *)
+    pose proof (wf_Evidence_inv _ _ _ Hwf) as Hsz.
+    unfold et_size in Hsz.
+    rewrite Hcanon in Hsz.
+    rewrite et_size_canon_asp_unfold in Hsz.
+    destruct ((asp_types (session_context sc)) ![ asp_id ]) as [ [fwd attrs] | ] eqn:Hlk >
+    [ | inversion Hsz ].
+    destruct fwd as [ [n nlt] | [n nlt] | | [n nlt] isig ].
+    + (* REPLACE: appraisal is just the dual ASP *)
+      cbn [invoke_APPR'] in Hrun.
+      cbv beta iota zeta delta [get_config get_asp_dual get_asp_type hoist_result
+        hoist_option CVM_bind CVM_ret CVM_fail CVM_ask ret] in Hrun.
+      destruct ((asp_comps (session_context sc)) ![ asp_id ]) as [dual | ] eqn:Hdual >
+      [ | inversion Hrun ].
+      rewrite Hlk in Hrun.
+      cbv beta iota zeta in Hrun.
+      eapply wf_Evidence_invoke_ASP > [ exact Hwfo | exact Hrun ].
+    + (* WRAP: dual ASP (the unwrapper), runtime size check, then recurse *)
+      assert (Hcanon' : normalize_ev (session_context sc) et' = et').
+      { eapply canon_asp_inner > [ exact Hcanon | exact Hlk | discriminate ]. }
+      cbn [invoke_APPR'] in Hrun.
+      cbv beta iota zeta delta [get_config get_asp_dual get_asp_type hoist_result
+        hoist_option CVM_bind CVM_ret CVM_fail CVM_ask ret] in Hrun.
+      destruct ((asp_comps (session_context sc)) ![ asp_id ]) as [dual | ] eqn:Hdual >
+      [ | inversion Hrun ].
+      rewrite Hlk in Hrun.
+      cbv beta iota zeta in Hrun.
+      match! goal with
+      | [ _h : context [ invoke_ASP ?ev ?ps' ?cf ?stx ] |- _ ] =>
+        destruct (invoke_ASP $ev $ps' $cf $stx) as [ares st1] eqn:HASP
+      end.
+      destruct ares as [ev1 | aerr] > [ | inversion Hrun ].
+      destruct ev1 as [r'' et''].
+      pose proof (wf_Evidence_invoke_ASP _ _ _ _ _ _ Hwfo HASP) as Hwf1.
+      pose proof (invoke_ASP_evidence _ _ _ _ _ _ HASP) as Hshape.
+      cbv beta iota zeta delta [get_et] in Hshape.
+      subst et''.
+      pose proof (wf_Evidence_inv _ _ _ Hwf1) as Hlen1.
+      destruct (et_size (session_context sc)
+                  (asp_evt (session_plc sc) (asp_paramsC dual args) eo))
+        as [n1 | ] eqn:Hsz1 > [ | inversion Hrun ].
+      destruct (et_size (session_context sc) et') as [n2 | ] eqn:Hsz2 >
+      [ | inversion Hrun ].
+      destruct (DecEq.dec_eq n1 n2) as [Heqn | Hneq] > [ | inversion Hrun ].
+      inversion Hlen1; subst.
+      eapply IH > [ exact Hcanon' | | exact Hwf1 | exact Hrun ].
+      econstructor.
+      * reflexivity.
+      * rewrite Hsz2; f_equal; lia.
+    + (* UNWRAP: vacuous -- a canonical UNWRAP-headed asp has no size *)
+      inversion Hsz.
+    + (* EXTEND: peel the extension, dual ASP on it, recurse on the rest *)
+      assert (Hcanon' : normalize_ev (session_context sc) et' = et').
+      { eapply canon_asp_inner > [ exact Hcanon | exact Hlk | discriminate ]. }
+      destruct (et_size_canon (session_context sc) et') as [nin | ] eqn:Hszin >
+      [ | cbv beta iota zeta delta [bind] in Hsz; inversion Hsz ].
+      cbv beta iota zeta delta [bind] in Hsz.
+      assert (Hszet' : et_size (session_context sc) et' = res nin).
+      { unfold et_size. rewrite Hcanon'. exact Hszin. }
+      assert (Hlen_r : n + nin = List.length r).
+      { inversion Hsz. reflexivity. }
+      cbn [invoke_APPR'] in Hrun.
+      cbv beta iota zeta delta [get_config get_asp_dual get_asp_type hoist_result
+        hoist_option split_ev inc_id add_trace get_trace get_evid get_st
+        put_trace get_pl CVM_bind CVM_ret CVM_fail CVM_ask CVM_put CVM_get
+        ret] in Hrun.
+      destruct ((asp_comps (session_context sc)) ![ asp_id ]) as [dual | ] eqn:Hdual >
+      [ | inversion Hrun ].
+      rewrite Hlk in Hrun.
+      cbv beta iota zeta in Hrun.
+      destruct (peel_n_rawev n r) as [ [ls1 r_ev] | ] eqn:Hpeel > [ | inversion Hrun ].
+      pose proof (peel_n_rawev_result_spec _ _ _ _ Hpeel) as Hps.
+      destruct Hps as [Hreq Hlenls1].
+      match! goal with
+      | [ _h : context [ invoke_ASP ?ev ?ps' ?cf ?stx ] |- _ ] =>
+        destruct (invoke_ASP $ev $ps' $cf $stx) as [ares st1] eqn:HASP
+      end.
+      destruct ares as [ev1 | aerr] > [ | inversion Hrun ].
+      pose proof (wf_Evidence_invoke_ASP _ _ _ _ _ _ Hwfo HASP) as Hwf1.
+      assert (Hwf2 : wf_Evidence (session_context sc) (evc r_ev et')).
+      { econstructor.
+        - reflexivity.
+        - rewrite Hszet'.
+          f_equal.
+          subst r.
+          rewrite length_app in Hlen_r.
+          lia. }
+      match! goal with
+      | [ _h : context [ invoke_APPR' ?rr ?ett ?eoo ?cf ?stx ] |- _ ] =>
+        destruct (invoke_APPR' $rr $ett $eoo $cf $stx) as [ares2 st2] eqn:Hrec
+      end.
+      destruct ares2 as [ev2 | rerr] > [ | inversion Hrun ].
+      pose proof (IH _ _ _ _ _ Hcanon' Hwf2 Hwf2 Hrec) as Hwfev2.
+      destruct ev1 as [b1 t1].
+      destruct ev2 as [b2 t2].
+      cbv beta iota zeta delta [join_seq get_pl get_config inc_id add_trace
+        get_trace get_evid get_st put_trace CVM_bind CVM_ret CVM_ask CVM_put
+        CVM_get ret] in Hrun.
+      inversion Hrun; subst.
+      eapply wf_Evidence_split > [ exact Hwf1 | exact Hwfev2 ].
+  - (* left_evt: vacuous -- a canonical projection is stuck, so it has no size *)
+    pose proof (wf_Evidence_inv _ _ _ Hwf) as Hsz.
+    unfold et_size in Hsz.
+    rewrite Hcanon in Hsz.
+    cbv beta iota delta [et_size_canon] in Hsz.
+    inversion Hsz.
+  - (* right_evt: vacuous, as for left_evt *)
+    pose proof (wf_Evidence_inv _ _ _ Hwf) as Hsz.
+    unfold et_size in Hsz.
+    rewrite Hcanon in Hsz.
+    cbv beta iota delta [et_size_canon] in Hsz.
+    inversion Hsz.
+  - (* split_evt: peel both halves, recurse on each against the projected
+       output accumulator, rejoin *)
+    pose proof (canon_split _ _ _ _ Hcanon) as Hc.
+    destruct Hc as [Hc1 Hc2].
+    cbn [invoke_APPR'] in Hrun.
+    cbv beta iota zeta delta [get_config hoist_result split_ev inc_id add_trace
+      get_trace get_evid get_st put_trace get_pl CVM_bind CVM_ret CVM_fail
+      CVM_ask CVM_put CVM_get ret] in Hrun.
+    destruct (et_size (session_context sc) et1) as [n1 | ] eqn:Hs1 > [ | inversion Hrun ].
+    destruct (et_size (session_context sc) et2) as [n2 | ] eqn:Hs2 > [ | inversion Hrun ].
+    destruct (peel_n_rawev n1 r) as [ [ev_l r_ev] | ] eqn:Hp1 > [ | inversion Hrun ].
+    destruct (peel_n_rawev n2 r_ev) as [ [ev_r rest] | ] eqn:Hp2 > [ | inversion Hrun ].
+    pose proof (peel_n_rawev_result_spec _ _ _ _ Hp1) as Hps1.
+    destruct Hps1 as [Hreq1 Hlen_l].
+    pose proof (peel_n_rawev_result_spec _ _ _ _ Hp2) as Hps2.
+    destruct Hps2 as [Hreq2 Hlen_r].
+    destruct rest as [ | junk rest' ] > [ | inversion Hrun ].
+    rewrite app_nil_r in Hreq2.
+    subst r_ev.
+    destruct (equiv_EvidenceT (session_context sc) et1 (left_evt eo)) eqn:Hq1 >
+    [ | inversion Hrun ].
+    destruct (equiv_EvidenceT (session_context sc) et2 (right_evt eo)) eqn:Hq2 >
+    [ | inversion Hrun ].
+    cbv beta iota zeta in Hrun.
+    assert (Hwfl : wf_Evidence (session_context sc) (evc ev_l et1)).
+    { econstructor > [ exact Hlen_l | exact Hs1 ]. }
+    assert (Hwflo : wf_Evidence (session_context sc) (evc ev_l (left_evt eo))).
+    { econstructor > [ exact Hlen_l | ].
+      pose proof (equiv_EvidenceT_impl_et_size_same _ _ _ Hq1) as Hq1'.
+      rewrite <- Hq1'.
+      exact Hs1. }
+    assert (Hwfr : wf_Evidence (session_context sc) (evc ev_r et2)).
+    { econstructor > [ exact Hlen_r | exact Hs2 ]. }
+    assert (Hwfro : wf_Evidence (session_context sc) (evc ev_r (right_evt eo))).
+    { econstructor > [ exact Hlen_r | ].
+      pose proof (equiv_EvidenceT_impl_et_size_same _ _ _ Hq2) as Hq2'.
+      rewrite <- Hq2'.
+      exact Hs2. }
+    match! goal with
+    | [ _h : context [ invoke_APPR' ?rr ?ett ?eoo ?cf ?stx ] |- _ ] =>
+      destruct (invoke_APPR' $rr $ett $eoo $cf $stx) as [ares1 st1] eqn:Hr1
+    end.
+    destruct ares1 as [ev1 | rerr] > [ | inversion Hrun ].
+    pose proof (IHet1 _ _ _ _ _ Hc1 Hwfl Hwflo Hr1) as Hwfev1.
+    match! goal with
+    | [ _h : context [ invoke_APPR' ?rr ?ett ?eoo ?cf ?stx ] |- _ ] =>
+      destruct (invoke_APPR' $rr $ett $eoo $cf $stx) as [ares2 st2] eqn:Hr2
+    end.
+    destruct ares2 as [ev2 | rerr2] > [ | inversion Hrun ].
+    pose proof (IHet2 _ _ _ _ _ Hc2 Hwfr Hwfro Hr2) as Hwfev2.
+    destruct ev1 as [b1 t1].
+    destruct ev2 as [b2 t2].
+    cbv beta iota zeta delta [join_seq get_pl get_config inc_id add_trace
+      get_trace get_evid get_st put_trace CVM_bind CVM_ret CVM_ask CVM_put
+      CVM_get ret] in Hrun.
+    inversion Hrun; subst.
+    eapply wf_Evidence_split > [ exact Hwfev1 | exact Hwfev2 ].
 Qed.
 
 Lemma wf_Evidence_proc_left : forall G e ep,
@@ -986,7 +1076,30 @@ Proof.
       ff with u;
       repeat (rewrite length_app in *);
       f_equal; lia).
-    eapply wf_Evidence_invoke_APPR; eauto; destruct e; ff.
+    (* APPR: [invoke_APPR] hands [invoke_APPR'] the *normalized* structural
+       type, so the canonicity premise is idempotence and the structural wf
+       premise follows by normalize-invariance of [et_size]. *)
+    (* residual [bundle_asp] outputs: each kind's runtime length check is
+       exactly the [et_size] equation wf needs *)
+    all: try (econstructor >
+      [ reflexivity
+      | erewrite et_size_asp_replace > [ reflexivity | eassumption ] ]; fail).
+    all: try (econstructor >
+      [ reflexivity
+      | erewrite et_size_asp_wrap > [ reflexivity | eassumption ] ]; fail).
+    all: try (econstructor > [ reflexivity | eassumption ]; fail).
+    all: try (eapply wf_Evidence_inv in H; econstructor >
+      [ rewrite length_app; reflexivity
+      | erewrite et_size_asp_extend > [ rewrite H; reflexivity | eassumption ] ];
+      fail).
+    (* APPR: [invoke_APPR] hands [invoke_APPR'] the *normalized* structural
+       type, so the canonicity premise is idempotence and the structural wf
+       premise follows by normalize-invariance of [et_size]. *)
+    eapply wf_Evidence_invoke_APPR >
+    [ eapply normalize_ev_idempotent
+    | eapply wf_Evidence_normalize_ev; eassumption
+    | eassumption
+    | eassumption ].
   - ff;
     find_eapply_lem_hyp do_remote_res_axiom; eauto; ff.
     Unshelve. 
@@ -1017,10 +1130,10 @@ Theorem invoke_APPR_respects_events : forall G et r eo st sc st' e' i m evs,
   st_trace st' = m ++ evs.
 Proof.
   intros G.
-  induction et using (Evidence_subterm_path_Ind_special G);
+  induction et;
   simpl in *; intros; cvm_monad_unfold.
   - ff; rewrite app_nil_r; ff.
-  - ff. 
+  - ff.
   - ff with u;
     repeat (find_eapply_lem_hyp peel_n_rawev_result_spec); ff;
     try (match! goal with
@@ -1036,69 +1149,8 @@ Proof.
     end;
     assert (st_evid st + 1 + 1 = st_evid st + 2) by lia; ff;
     repeat (rewrite <- app_assoc); ff).
-  - ff with u;
-    repeat (find_eapply_lem_hyp peel_n_rawev_result_spec); ff;
-    try (match! goal with
-    | [ h : invoke_APPR' _ ?_e _ _ _ = _,
-        h2 : appr_events' _ _ ?_e _ _ = _,
-        ih : context[invoke_APPR' _ ?_e _ _ _ = _ -> _] |- _ ] =>
-      let ih := Control.hyp ih in
-      let h2 := Control.hyp h2 in
-      eapply invoke_APPR'_spans in $h as ?; try reflexivity; ff;
-      try (eapply appr_events'_size_works; eauto; ff); ff;
-      eapply $ih in $h > [ | | | | | eapply $h2 ]; 
-      simpl in *; try reflexivity; try lia; ff
-    end;
-    assert (st_evid st + 1 + 1 = st_evid st + 2) by lia; ff;
-    repeat (rewrite <- app_assoc); ff);
-    ateb_same; ff with a.
-  - ff with u;
-    repeat (find_eapply_lem_hyp peel_n_rawev_result_spec); ff;
-    try (match! goal with
-    | [ h : invoke_APPR' _ ?_e _ _ _ = _,
-        h2 : appr_events' _ _ ?_e _ _ = _,
-        ih : context[invoke_APPR' _ ?_e _ _ _ = _ -> _] |- _ ] =>
-      let ih := Control.hyp ih in
-      let h2 := Control.hyp h2 in
-      eapply invoke_APPR'_spans in $h as ?; try reflexivity; ff;
-      try (eapply appr_events'_size_works; eauto; ff); ff;
-      eapply $ih in $h > [ | | | | | eapply $h2 ]; 
-      simpl in *; try reflexivity; try lia; ff
-    end;
-    assert (st_evid st + 1 + 1 = st_evid st + 2) by lia; ff;
-    repeat (rewrite <- app_assoc); ff).
-  - ff with u;
-    repeat (find_eapply_lem_hyp peel_n_rawev_result_spec); ff;
-    try (match! goal with
-    | [ h : invoke_APPR' _ ?_e _ _ _ = _,
-        h2 : appr_events' _ _ ?_e _ _ = _,
-        ih : context[invoke_APPR' _ ?_e _ _ _ = _ -> _] |- _ ] =>
-      let ih := Control.hyp ih in
-      let h2 := Control.hyp h2 in
-      eapply invoke_APPR'_spans in $h as ?; try reflexivity; ff;
-      try (eapply appr_events'_size_works; eauto; ff); ff;
-      eapply $ih in $h > [ | | | | | eapply $h2 ]; 
-      simpl in *; try reflexivity; try lia; ff
-    end;
-    assert (st_evid st + 1 + 1 = st_evid st + 2) by lia; ff;
-    repeat (rewrite <- app_assoc); ff);
-    ateb_same; ff with a.
-  - ff with u;
-    repeat (find_eapply_lem_hyp peel_n_rawev_result_spec); ff;
-    try (match! goal with
-    | [ h : invoke_APPR' _ ?_e _ _ _ = _,
-        h2 : appr_events' _ _ ?_e _ _ = _,
-        ih : context[invoke_APPR' _ ?_e _ _ _ = _ -> _] |- _ ] =>
-      let ih := Control.hyp ih in
-      let h2 := Control.hyp h2 in
-      eapply invoke_APPR'_spans in $h as ?; try reflexivity; ff;
-      try (eapply appr_events'_size_works; eauto; ff); ff;
-      eapply $ih in $h > [ | | | | | eapply $h2 ]; 
-      simpl in *; try reflexivity; try lia; ff
-    end;
-    assert (st_evid st + 1 + 1 = st_evid st + 2) by lia; ff;
-    repeat (rewrite <- app_assoc); ff);
-    ateb_same; ff with a.
+  - ff.
+  - ff.
   - ff with u;
     repeat (match! goal with
     | [ h : invoke_APPR' _ ?_e _ _ _ = _,
