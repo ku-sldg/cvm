@@ -1273,3 +1273,22 @@ Proof.
   eapply cvm_trace_respects_events in H5; eauto;
   simpl in *; ff.
 Qed.
+
+(** * End-to-end: static typing meets the deployed machine
+
+    Composing typing soundness w.r.t. the reference semantics
+    ([typeof_sound_wrt_eval], copland-spec) with the CVM's evidence-type
+    correctness ([cvm_evidence_type]): the evidence type assigned to a
+    protocol *statically* is exactly the type of the evidence the CVM
+    produces at runtime. *)
+Corollary typeof_cvm_evidence : forall t e e' et' st st' sc,
+  typeof (session_context sc) (session_plc sc) (get_et e) t et' ->
+  build_cvm e t sc st = (res e', st') ->
+  get_et e' = et'.
+Proof.
+  intros t e e' et' st st' sc Hty Hcvm.
+  eapply cvm_evidence_type.
+  - exact Hcvm.
+  - eapply typeof_sound_wrt_eval.
+    exact Hty.
+Qed.
